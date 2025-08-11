@@ -1,6 +1,6 @@
 <div align="center">
 
-<img alt="Insurance MegaCorp" src="assets/imc-schema-banner.svg" width="85%" />
+<img alt="Insurance MegaCorp" src="assets/imc-schema-banner.png" width="40%" />
 
 <h2>🛡️ Insurance MegaCorp · Telemetry & Claims Schema</h2>
 <p>
