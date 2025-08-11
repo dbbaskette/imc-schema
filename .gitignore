@@ -1,0 +1,16 @@
+# Generated SQL artifacts
+*_generated.sql
+
+# Local logs
+logs/
+*.log
+
+# Self-updating release helper artifacts
+.release-exec
+release.sh
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/
+

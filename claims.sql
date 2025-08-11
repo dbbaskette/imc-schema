@@ -1,15 +1,31 @@
+-- =============================================================================
+-- Claims table definition and sample data
+-- =============================================================================
+
+-- Create claims table
+CREATE TABLE claims (
+    claim_id SERIAL PRIMARY KEY,
+    accident_id INTEGER NOT NULL REFERENCES accidents(accident_id),
+    claim_date DATE NOT NULL,
+    status VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'DENIED')),
+    amount NUMERIC(10, 2),
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Sample data for claims table
 -- This data corresponds to the new accidents in Georgia.
 
 INSERT INTO claims (claim_id, accident_id, claim_date, status, amount, description)
 VALUES
--- Claim for Accident 1 (Liam Smith)
+-- Claim for Accident 1 (Sarah Chen)
 (600001, 500001, '2023-10-15', 'APPROVED', 3250.50, 'Repairs to rear bumper and trunk.'),
 
--- Claim for Accident 2 (Emma Brown)
+-- Claim for Accident 2 (Michael Harris)
 (600002, 500002, '2023-11-21', 'DENIED', 800.00, 'Damage estimate is below the policy deductible of $1000.'),
 
--- Claim for Accident 3 (Mateo Martinez)
+-- Claim for Accident 3 (Carlos Rodriguez - additional driver)
 (600003, 500003, '2023-12-01', 'PENDING', 12500.00, 'Awaiting police report and liability assessment for side-impact.'),
 
 -- Claim for Accident 5 (Daniel Harris)

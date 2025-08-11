@@ -1,26 +1,42 @@
+-- =============================================================================
+-- Drivers table definition and sample data
+-- =============================================================================
+
+-- Create drivers table
+CREATE TABLE drivers (
+    driver_id SERIAL PRIMARY KEY,
+    policy_id INTEGER NOT NULL REFERENCES policies(policy_id),
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    date_of_birth DATE NOT NULL,
+    license_number VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Sample data for drivers table
 -- This data corresponds to the 50 policies for customers in Georgia.
 -- Includes primary drivers and additional drivers on some policies.
 
 INSERT INTO drivers (driver_id, policy_id, first_name, last_name, date_of_birth, license_number) VALUES
-(400001, 200001, 'Liam', 'Smith', '1990-05-15', 'S12345678'),
-(400002, 200002, 'Olivia', 'Johnson', '1988-11-22', 'J23456789'),
-(400003, 200003, 'Noah', 'Williams', '1995-02-10', 'W34567890'),
-(400004, 200004, 'Emma', 'Brown', '1992-08-30', 'B45678901'),
-(400005, 200004, 'Ethan', 'Brown', '1991-07-25', 'B45678902'), -- Additional Driver
-(400006, 200005, 'Oliver', 'Jones', '1985-12-01', 'J56789012'),
-(400007, 200006, 'Ava', 'Garcia', '2000-01-20', 'G67890123'),
-(400008, 200007, 'Elijah', 'Miller', '1978-06-05', 'M78901234'),
-(400009, 200008, 'Charlotte', 'Davis', '1998-09-18', 'D89012345'),
-(400010, 200009, 'William', 'Rodriguez', '1982-03-12', 'R90123456'),
-(400011, 200010, 'Sophia', 'Martinez', '1999-04-08', 'M01234567'),
-(400012, 200010, 'Mateo', 'Martinez', '1998-10-14', 'M01234568'), -- Additional Driver
-(400013, 200011, 'James', 'Hernandez', '1991-07-19', 'H12345679'),
-(400014, 200012, 'Amelia', 'Lopez', '1993-10-28', 'L23456780'),
-(400015, 200013, 'Benjamin', 'Gonzalez', '1989-01-03', 'G34567891'),
-(400016, 200014, 'Isabella', 'Wilson', '1996-05-21', 'W45678902'),
-(400017, 200015, 'Lucas', 'Anderson', '1994-02-14', 'A56789013'),
-(400018, 200015, 'Mia', 'Anderson', '1995-03-16', 'A56789014'), -- Additional Driver
+(400001, 200001, 'Sarah', 'Chen', '1990-05-15', 'C12345678'),
+(400002, 200002, 'Emily', 'Carter', '1988-11-22', 'C23456789'),
+(400003, 200003, 'Benjamin', 'Rivera', '1995-02-10', 'R34567890'),
+(400004, 200004, 'Michael', 'Harris', '1992-08-30', 'H45678901'),
+(400005, 200004, 'Jessica', 'Harris', '1991-07-25', 'H45678902'), -- Additional Driver (spouse)
+(400006, 200005, 'David', 'Lee', '1985-12-01', 'L56789012'),
+(400007, 200006, 'Jessica', 'Thompson', '2000-01-20', 'T67890123'),
+(400008, 200007, 'Andrew', 'Martinez', '1978-06-05', 'M78901234'),
+(400009, 200008, 'Ashley', 'Wilson', '1998-09-18', 'W89012345'),
+(400010, 200009, 'Christopher', 'Garcia', '1982-03-12', 'G90123456'),
+(400011, 200010, 'Amanda', 'Rodriguez', '1999-04-08', 'R01234567'),
+(400012, 200010, 'Carlos', 'Rodriguez', '1998-10-14', 'R01234568'), -- Additional Driver (spouse)
+(400013, 200011, 'Daniel', 'Johnson', '1991-07-19', 'J12345679'),
+(400014, 200012, 'Lauren', 'Brown', '1993-10-28', 'B23456780'),
+(400015, 200013, 'Matthew', 'Davis', '1989-01-03', 'D34567891'),
+(400016, 200014, 'Stephanie', 'Miller', '1996-05-21', 'M45678902'),
+(400017, 200015, 'Ryan', 'Anderson', '1994-02-14', 'A56789013'),
+(400018, 200015, 'Sarah', 'Anderson', '1995-03-16', 'A56789014'), -- Additional Driver (spouse)
 (400019, 200016, 'Mia', 'Thomas', '2001-06-09', 'T67890124'),
 (400020, 200017, 'Henry', 'Taylor', '1980-08-17', 'T78901235'),
 (400021, 200018, 'Evelyn', 'Moore', '1997-11-02', 'M89012346'),

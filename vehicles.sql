@@ -1,3 +1,20 @@
+-- =============================================================================
+-- Vehicles table definition and sample data
+-- =============================================================================
+
+-- Create vehicles table
+CREATE TABLE vehicles (
+    vehicle_id SERIAL PRIMARY KEY,
+    policy_id INTEGER NOT NULL REFERENCES policies(policy_id),
+    vin VARCHAR(17) NOT NULL,
+    make VARCHAR(50) NOT NULL,
+    model VARCHAR(50) NOT NULL,
+    year INTEGER NOT NULL,
+    color VARCHAR(30),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Sample data for vehicles table
 -- This data corresponds to the 50 policies for customers in Georgia.
 

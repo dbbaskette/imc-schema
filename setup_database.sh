@@ -25,9 +25,6 @@ echo ""
 "$SCRIPT_DIR/create_schema.sh" "$DB_HOST" "$DB_PORT" "$DB_NAME" "$DB_USER" "$DB_PASSWORD"
 
 echo ""
-"$SCRIPT_DIR/load_sample_data.sh" "$DB_HOST" "$DB_PORT" "$DB_NAME" "$DB_USER" "$DB_PASSWORD"
-
-echo ""
 echo "--- Database Setup Complete ---"
 
 echo ""

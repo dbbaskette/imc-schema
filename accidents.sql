@@ -1,12 +1,31 @@
+-- =============================================================================
+-- Accidents table definition and sample data
+-- =============================================================================
+
+-- Create accidents table
+CREATE TABLE accidents (
+    accident_id SERIAL PRIMARY KEY,
+    policy_id INTEGER NOT NULL REFERENCES policies(policy_id),
+    vehicle_id INTEGER NOT NULL REFERENCES vehicles(vehicle_id),
+    driver_id INTEGER NOT NULL REFERENCES drivers(driver_id),
+    accident_timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+    latitude NUMERIC(10, 7),
+    longitude NUMERIC(10, 7),
+    g_force NUMERIC(4, 2),
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Sample data for accidents table
 -- This data corresponds to the new policies, vehicles, and drivers in Georgia.
 
 INSERT INTO accidents (accident_id, policy_id, vehicle_id, driver_id, accident_timestamp, latitude, longitude, g_force, description)
 VALUES
--- Accident 1: Liam Smith in Atlanta
+-- Accident 1: Sarah Chen in Atlanta
 (500001, 200001, 300001, 400001, '2023-10-15 08:45:00-04', 33.7537, -84.3863, 3.1, 'Rear-ended at a stoplight on Peachtree St.'),
 
--- Accident 2: Emma Brown in Macon
+-- Accident 2: Michael Harris in Macon
 (500002, 200004, 300005, 400004, '2023-11-20 17:30:00-05', 32.8407, -83.6324, 1.9, 'Minor collision in a parking lot on Cherry St.'),
 
 -- Accident 3: Mateo Martinez (addtl driver) in Macon

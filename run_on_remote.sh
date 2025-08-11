@@ -12,21 +12,21 @@ set -e
 # --- BEGIN CONFIGURATION ---
 
 # Your remote database server's hostname or IP address
-REMOTE_HOST="your_remote_host"
+REMOTE_HOST="big-data-001.kuhn-labs.com"
 
 # The port your remote database is listening on (e.g., 5432 for PostgreSQL)
 REMOTE_PORT="5432"
 
 # The name of the database you want to set up
-DATABASE_NAME="your_database_name"
+DATABASE_NAME="imc"
 
 # The username for connecting to the database
-DATABASE_USER="your_username"
+DATABASE_USER="gpadmin"
 
 # The password for the database user
 # It is recommended to use a more secure method for handling passwords,
 # such as environment variables or a secrets management tool.
-DATABASE_PASSWORD="your_password"
+DATABASE_PASSWORD="VMware1!"
 
 # --- END CONFIGURATION ---
 
