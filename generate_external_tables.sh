@@ -154,54 +154,55 @@ DROP FOREIGN TABLE IF EXISTS vehicle_telemetry_data_v2 CASCADE;
 \echo '--- Creating foreign table vehicle_telemetry_data_v2 ---'
 
 CREATE EXTERNAL TABLE vehicle_telemetry_data_v2 (
+  -- Core telemetry fields
   policy_id              BIGINT,
   vehicle_id             BIGINT,
-  vin                    VARCHAR(255),
-  event_time             VARCHAR(255),
+  vin                    VARCHAR(17),
+  event_time             TIMESTAMP,
   speed_mph              DOUBLE PRECISION,
   speed_limit_mph        DOUBLE PRECISION,
-  current_street         VARCHAR(255),
+  current_street         VARCHAR(200),
   g_force                DOUBLE PRECISION,
-  driver_id              VARCHAR(255),
+  driver_id              INTEGER,
 
-  -- GPS sensor data (flattened from sensors.gps)
-  latitude               DOUBLE PRECISION,
-  longitude              DOUBLE PRECISION,
-  altitude               DOUBLE PRECISION,
-  speed_ms               DOUBLE PRECISION,
-  bearing                DOUBLE PRECISION,
-  accuracy               DOUBLE PRECISION,
-  satellite_count        INTEGER,
+  -- GPS sensor data (flattened)
+  gps_latitude           DOUBLE PRECISION,
+  gps_longitude          DOUBLE PRECISION,
+  gps_altitude           DOUBLE PRECISION,
+  gps_speed              DOUBLE PRECISION,
+  gps_bearing            DOUBLE PRECISION,
+  gps_accuracy           DOUBLE PRECISION,
+  gps_satellite_count    INTEGER,
   gps_fix_time           INTEGER,
 
-  -- Accelerometer data (flattened from sensors.accelerometer)
-  accel_x                DOUBLE PRECISION,
-  accel_y                DOUBLE PRECISION,
-  accel_z                DOUBLE PRECISION,
+  -- Accelerometer data (flattened)
+  accelerometer_x        DOUBLE PRECISION,
+  accelerometer_y        DOUBLE PRECISION,
+  accelerometer_z        DOUBLE PRECISION,
 
-  -- Gyroscope data (flattened from sensors.gyroscope)
-  gyro_pitch             DOUBLE PRECISION,
-  gyro_roll              DOUBLE PRECISION,
-  gyro_yaw               DOUBLE PRECISION,
+  -- Gyroscope data (flattened)
+  gyroscope_x            DOUBLE PRECISION,
+  gyroscope_y            DOUBLE PRECISION,
+  gyroscope_z            DOUBLE PRECISION,
 
-  -- Magnetometer data (flattened from sensors.magnetometer)
-  mag_x                  DOUBLE PRECISION,
-  mag_y                  DOUBLE PRECISION,
-  mag_z                  DOUBLE PRECISION,
-  heading                DOUBLE PRECISION,
+  -- Magnetometer data (flattened)
+  magnetometer_x         DOUBLE PRECISION,
+  magnetometer_y         DOUBLE PRECISION,
+  magnetometer_z         DOUBLE PRECISION,
+  magnetometer_heading   DOUBLE PRECISION,
 
   -- Environmental sensors
   barometric_pressure    DOUBLE PRECISION,
 
-  -- Device info (flattened from sensors.device)
-  battery_level          DOUBLE PRECISION,
-  signal_strength        INTEGER,
-  orientation            VARCHAR(255),
-  screen_on              BOOLEAN,
-  charging               BOOLEAN
+  -- Device info (flattened)
+  device_battery_level   DOUBLE PRECISION,
+  device_signal_strength INTEGER,
+  device_orientation     VARCHAR(20),
+  device_screen_on       BOOLEAN,
+  device_charging        BOOLEAN
 )
 LOCATION (
-  'pxf://telemetry-data-v2/date=*/part-*.parquet?PROFILE=${PXF_PROFILE:-hdfs:parquet}&SERVER=${PXF_SERVER_NAME:-hdfs-server}'
+  'pxf://telemetry-data-v2/*/driver_id=*/telemetry-*.parquet?PROFILE=${PXF_PROFILE:-hdfs:parquet}&SERVER=${PXF_SERVER_NAME:-hdfs-server}'
 )
 FORMAT 'CUSTOM' (FORMATTER='pxfwritable_import');
 

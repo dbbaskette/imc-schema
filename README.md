@@ -84,11 +84,12 @@ This schema includes PXF external tables for reading telemetry data from HDFS an
 ### 🧩 Tables Overview
 
 **External Tables (HDFS Reads):**
--   **`vehicle_telemetry_data`**: Comprehensive vehicle sensor data with flattened JSON schema
+-   **`vehicle_telemetry_data_v2`**: New flattened vehicle sensor data (recommended for new applications)
+-   **`vehicle_telemetry_data`**: Legacy vehicle sensor data (original nested format)
 -   **`crash_reports_data`**: Processed crash reports with risk analysis and emergency response recommendations
 
 **Internal Tables (Application Writes):**
--   **`vehicle_events`**: Real-time telemetry data sink matching flattened JSON structure
+-   **`vehicle_events`**: Real-time telemetry data sink optimized for JDBC streaming
 
 ### ✅ Prerequisites for Telemetry Features
 
@@ -98,11 +99,12 @@ This schema includes PXF external tables for reading telemetry data from HDFS an
 
 ### 🗂️ Telemetry Data Structure
 
-**Source Path**: `hdfs://namenode:9000/telemetry-data`
-**Format**: Parquet with Snappy compression
-**Partitioning**: `policy_id=XXX/year=YYYY/month=MM/date=YYYY-MM-DD/`
+#### **Current Format (v2) - Recommended**
+**Source Path**: `/insurance-megacorp/telemetry-data-v2/`
+**Format**: Parquet with Snappy compression  
+**Partitioning**: `/YYYY-MM-DD/driver_id=XXX/telemetry-*.parquet`
 
-**Flattened JSON Schema (Corrected):**
+**Optimized Flattened JSON Schema:**
 ```json
 {
   "policy_id": 200018,
@@ -113,27 +115,33 @@ This schema includes PXF external tables for reading telemetry data from HDFS an
   "speed_limit_mph": 35,
   "current_street": "Peachtree Street",
   "g_force": 1.18,
-  "driver_id": "DRIVER-400018",
+  "driver_id": 400018,
+  
   "gps_latitude": 33.7701,
   "gps_longitude": -84.3876,
   "gps_altitude": 351.59,
-  "gps_speed_ms": 14.5,
+  "gps_speed": 14.5,
   "gps_bearing": 148.37,
   "gps_accuracy": 2.64,
   "gps_satellite_count": 11,
   "gps_fix_time": 150,
+  
   "accelerometer_x": 0.1234,
   "accelerometer_y": -0.0567,
   "accelerometer_z": 0.9876,
-  "gyroscope_pitch": 0.02,
-  "gyroscope_roll": -0.01,
-  "gyroscope_yaw": 0.15,
+  
+  "gyroscope_x": 0.02,
+  "gyroscope_y": -0.01,
+  "gyroscope_z": 0.15,
+  
   "magnetometer_x": 25.74,
   "magnetometer_y": -8.73,
   "magnetometer_z": 40.51,
   "magnetometer_heading": 148.37,
-  "sensors_barometric_pressure": 1013.25,
-  "device_battery_level": 82.0,
+  
+  "barometric_pressure": 1013.25,
+  
+  "device_battery_level": 82,
   "device_signal_strength": -63,
   "device_orientation": "portrait",
   "device_screen_on": false,
@@ -141,7 +149,11 @@ This schema includes PXF external tables for reading telemetry data from HDFS an
 }
 ```
 
-> **Note**: Field names match the actual flattened JSON structure with proper prefixes (gps_, accelerometer_, gyroscope_, magnetometer_, sensors_, device_) to avoid naming conflicts and maintain data lineage.
+#### **Legacy Format (v1)**
+**Source Path**: `/insurance-megacorp/telemetry-data/`  
+**Partitioning**: `policy_id=XXX/year=YYYY/month=MM/date=YYYY-MM-DD/`
+
+> **✅ Schema Changes**: All field names now use consistent flat naming without prefixes for optimal performance. Driver ID is now INTEGER type for better joins and indexing.
 
 ### 🔌 Remote Connection and Queries
 
@@ -171,11 +183,13 @@ The schema includes analytical views for telemetry data:
 -   **`v_vehicle_behavior_summary`**: Daily behavior summaries by vehicle with metrics
 -   **`vehicle_events_view`**: Basic view of vehicle events with calculated fields
 
-### 🔧 Schema Updates
+### 🔧 Recent Schema Updates
 
-**Recent Changes (Current Version):**
-- ✅ Updated all tables to match flattened JSON schema structure
-- ✅ Field names now use proper prefixes: `gps_`, `accelerometer_`, `gyroscope_`, `magnetometer_`, `device_`, `sensors_`
-- ✅ External and internal tables have consistent field naming
-- ✅ Views updated to use correct field references
-- ✅ Database schema successfully recreated with new structure
+**✅ Version 2.0 (Current) - Optimized Flat Schema:**
+- 🚀 **Performance**: Removed field prefixes for optimal query performance
+- 🔧 **Data Types**: `driver_id` changed to `INTEGER` for better indexing and joins
+- 📊 **Field Names**: Simplified naming: `gps_speed` (not `gps_speed_ms`), `gyroscope_x/y/z` (not `pitch/roll/yaw`)
+- 🗂️ **Partitioning**: New date-based partitioning `/YYYY-MM-DD/driver_id=*/` for improved query pruning
+- 📈 **Tables**: All internal and external tables updated with consistent schema
+- 🔍 **Views**: Analytical views rebuilt to use new field structure
+- ✅ **Status**: Database successfully updated and ready for production

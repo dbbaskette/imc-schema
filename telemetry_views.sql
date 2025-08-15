@@ -5,6 +5,7 @@
 -- =============================================================================
 
 -- Create a view for easier querying with calculated fields
+DROP VIEW IF EXISTS v_vehicle_telemetry_enriched CASCADE;
 CREATE VIEW v_vehicle_telemetry_enriched AS
 SELECT 
     vt.*,
@@ -12,7 +13,7 @@ SELECT
     SQRT(accelerometer_x*accelerometer_x + accelerometer_y*accelerometer_y + accelerometer_z*accelerometer_z) / 9.81 AS calculated_g_force,
     SQRT(accelerometer_x*accelerometer_x + accelerometer_y*accelerometer_y) / 9.81 AS lateral_g_force,
     ABS((accelerometer_z - 9.81) / 9.81) AS vertical_g_force,
-    SQRT(gyroscope_pitch*gyroscope_pitch + gyroscope_roll*gyroscope_roll + gyroscope_yaw*gyroscope_yaw) AS gyro_magnitude,
+    SQRT(gyroscope_x*gyroscope_x + gyroscope_y*gyroscope_y + gyroscope_z*gyroscope_z) AS gyro_magnitude,
     
     -- Add vehicle and policy information via joins
     v.make,
@@ -24,12 +25,13 @@ SELECT
     c.first_name,
     c.last_name,
     c.email
-FROM vehicle_telemetry_data vt
+FROM vehicle_telemetry_data_v2 vt
 LEFT JOIN vehicles v ON vt.vin = v.vin
 LEFT JOIN policies p ON vt.policy_id::INTEGER = p.policy_id
 LEFT JOIN customers c ON p.customer_id = c.customer_id;
 
 -- Create a view for high G-force events (potential crashes)
+DROP VIEW IF EXISTS v_high_gforce_events CASCADE;
 CREATE VIEW v_high_gforce_events AS
 SELECT 
     policy_id,
@@ -52,16 +54,17 @@ SELECT
         WHEN g_force >= 2.0 THEN 'MODERATE'
         ELSE 'NORMAL'
     END AS severity_level
-FROM vehicle_telemetry_data
+FROM vehicle_telemetry_data_v2
 WHERE g_force >= 2.0
 ORDER BY g_force DESC, event_time DESC;
 
 -- Create a view for vehicle behavior analysis
+DROP VIEW IF EXISTS v_vehicle_behavior_summary CASCADE;
 CREATE VIEW v_vehicle_behavior_summary AS
 SELECT 
     policy_id,
     vin,
-    date,
+    DATE(event_time) as date,
     COUNT(*) AS record_count,
     AVG(speed_mph) AS avg_speed,
     MAX(speed_mph) AS max_speed,
@@ -72,11 +75,12 @@ SELECT
     COUNT(*) FILTER (WHERE speed_mph > speed_limit_mph) AS speed_limit_violations,
     AVG(device_battery_level) AS avg_battery_level,
     AVG(gps_accuracy) AS avg_gps_accuracy
-FROM vehicle_telemetry_data
-GROUP BY policy_id, vin, date
-ORDER BY date DESC, policy_id;
+FROM vehicle_telemetry_data_v2
+GROUP BY policy_id, vin, DATE(event_time)
+ORDER BY DATE(event_time) DESC, policy_id;
 
 -- Create a comprehensive view for crash analysis
+DROP VIEW IF EXISTS v_crash_reports_enriched CASCADE;
 CREATE VIEW v_crash_reports_enriched AS
 SELECT 
     cr.*,
@@ -120,6 +124,7 @@ LEFT JOIN policies p ON cr.policy_id::INTEGER = p.policy_id
 LEFT JOIN customers c ON p.customer_id = c.customer_id;
 
 -- Create a view for emergency response prioritization
+DROP VIEW IF EXISTS v_emergency_response_queue CASCADE;
 CREATE VIEW v_emergency_response_queue AS
 SELECT 
     report_id,
@@ -127,7 +132,7 @@ SELECT
     vin,
     crash_timestamp,
     crash_type,
-    severity_level,
+    -- severity_level, -- Column not available in current crash_reports schema
     risk_score,
     current_street,
     crash_latitude,
@@ -148,10 +153,11 @@ WHERE crash_timestamp >= (NOW() - INTERVAL '24 hours')
 ORDER BY response_priority, crash_timestamp DESC;
 
 -- Create a view for crash pattern analysis
+DROP VIEW IF EXISTS v_crash_patterns CASCADE;
 CREATE VIEW v_crash_patterns AS
 SELECT 
     crash_type,
-    severity_level,
+    -- severity_level, -- Column not available in current crash_reports schema
     COUNT(*) AS crash_count,
     AVG(risk_score) AS avg_risk_score,
     AVG(total_g_force) AS avg_g_force,
@@ -173,17 +179,18 @@ SELECT
     MIN(crash_timestamp) AS earliest_crash
     
 FROM crash_reports_data
-GROUP BY crash_type, severity_level
+GROUP BY crash_type
 ORDER BY crash_count DESC, avg_risk_score DESC;
 
 -- Create a view for geographic crash hotspots
+DROP VIEW IF EXISTS v_crash_hotspots CASCADE;
 CREATE VIEW v_crash_hotspots AS
 SELECT 
     ROUND(crash_latitude::NUMERIC, 3) AS lat_zone,
     ROUND(crash_longitude::NUMERIC, 3) AS lng_zone,
     COUNT(*) AS crash_count,
     AVG(risk_score) AS avg_risk_score,
-    COUNT(*) FILTER (WHERE severity_level = 'CRITICAL') AS critical_crashes,
+    -- COUNT(*) FILTER (WHERE severity_level = 'CRITICAL') AS critical_crashes, -- Column not available
     COUNT(*) FILTER (WHERE emergency_recommended) AS emergency_crashes,
     string_agg(DISTINCT current_street, ', ') AS streets,
     MAX(crash_timestamp) AS latest_crash

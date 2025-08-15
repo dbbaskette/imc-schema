@@ -15,13 +15,13 @@ CREATE TABLE vehicle_events (
     speed_limit_mph REAL,
     current_street VARCHAR(255),
     g_force REAL,
-    driver_id VARCHAR(255),
+    driver_id INTEGER,
     
     -- GPS sensor data (flattened from sensors.gps)
     gps_latitude DOUBLE PRECISION,
     gps_longitude DOUBLE PRECISION,
     gps_altitude DOUBLE PRECISION,
-    gps_speed_ms REAL,
+    gps_speed REAL,
     gps_bearing REAL,
     gps_accuracy REAL,
     gps_satellite_count INTEGER,
@@ -33,9 +33,9 @@ CREATE TABLE vehicle_events (
     accelerometer_z REAL,
     
     -- Gyroscope data (flattened from sensors.gyroscope)
-    gyroscope_pitch REAL,
-    gyroscope_roll REAL,
-    gyroscope_yaw REAL,
+    gyroscope_x REAL,
+    gyroscope_y REAL,
+    gyroscope_z REAL,
     
     -- Magnetometer data (flattened from sensors.magnetometer)
     magnetometer_x REAL,
@@ -44,7 +44,7 @@ CREATE TABLE vehicle_events (
     magnetometer_heading REAL,
     
     -- Environmental sensors
-    sensors_barometric_pressure REAL,
+    barometric_pressure REAL,
     
     -- Device info (flattened from sensors.device)
     device_battery_level REAL,
@@ -88,7 +88,7 @@ SELECT
     gps_latitude,
     gps_longitude,
     gps_altitude,
-    gps_speed_ms,
+         gps_speed,
     gps_bearing,
     gps_accuracy,
     gps_satellite_count,
@@ -98,16 +98,16 @@ SELECT
     accelerometer_x,
     accelerometer_y,
     accelerometer_z,
-    gyroscope_pitch,
-    gyroscope_roll,
-    gyroscope_yaw,
+         gyroscope_x,
+     gyroscope_y,
+     gyroscope_z,
     magnetometer_x,
     magnetometer_y,
     magnetometer_z,
     magnetometer_heading,
     
-    -- Environmental
-    sensors_barometric_pressure,
+         -- Environmental
+     barometric_pressure,
     
     -- Device info
     device_battery_level,
