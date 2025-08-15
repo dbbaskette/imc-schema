@@ -21,8 +21,8 @@ SELECT COUNT(*) AS total_telemetry_records FROM vehicle_telemetry_data LIMIT 1;
 -- 2. Check data freshness and date range
 SELECT 'Data Freshness Check' AS test_name;
 SELECT 
-    MIN(timestamp) AS earliest_record,
-    MAX(timestamp) AS latest_record,
+    MIN(event_time) AS earliest_record,
+    MAX(event_time) AS latest_record,
     COUNT(DISTINCT date) AS unique_dates,
     COUNT(DISTINCT policy_id) AS unique_policies
 FROM vehicle_telemetry_data;
@@ -47,13 +47,13 @@ SELECT 'High G-Force Events' AS analysis_type;
 SELECT 
     policy_id,
     vin,
-    timestamp,
+    event_time,
     current_street,
     g_force,
     speed_mph,
     severity_level
 FROM v_high_gforce_events
-WHERE timestamp >= CURRENT_DATE - INTERVAL '24 hours'
+WHERE event_time >= CURRENT_DATE - INTERVAL '24 hours'
 ORDER BY g_force DESC
 LIMIT 20;
 
@@ -84,7 +84,7 @@ SELECT
     AVG(device_signal_strength) AS avg_signal,
     COUNT(*) FILTER (WHERE device_battery_level < 0.2) AS low_battery_events,
     COUNT(*) FILTER (WHERE device_signal_strength < -80) AS poor_signal_events,
-    MAX(timestamp) AS last_seen
+    MAX(event_time) AS last_seen
 FROM vehicle_telemetry_data
 WHERE date >= CURRENT_DATE - INTERVAL '3 days'
 GROUP BY policy_id, vin
@@ -162,7 +162,7 @@ LEFT JOIN crash_reports_data cr ON p.policy_id::VARCHAR = cr.policy_id
     AND cr.report_date >= (CURRENT_DATE - INTERVAL '365 days')::VARCHAR
 WHERE p.status = 'ACTIVE'
 GROUP BY c.customer_id, c.first_name, c.last_name, c.email
-HAVING COUNT(DISTINCT vt.timestamp) > 0  -- Only customers with telemetry data
+HAVING COUNT(DISTINCT vt.event_time) > 0  -- Only customers with telemetry data
 ORDER BY crash_count DESC, high_gforce_events DESC
 LIMIT 20;
 
@@ -190,7 +190,7 @@ LEFT JOIN vehicle_telemetry_data vt ON v.vin = vt.vin
 LEFT JOIN crash_reports_data cr ON v.vin = cr.vin
     AND cr.report_date >= (CURRENT_DATE - INTERVAL '365 days')::VARCHAR
 GROUP BY v.make, v.model, v.year
-HAVING COUNT(DISTINCT vt.timestamp) > 100  -- Sufficient data for analysis
+HAVING COUNT(DISTINCT vt.event_time) > 100  -- Sufficient data for analysis
 ORDER BY crashes_per_vehicle DESC, avg_g_force DESC
 LIMIT 15;
 
@@ -230,8 +230,8 @@ WHERE report_date >= (CURRENT_DATE - INTERVAL '30 days')::VARCHAR;
 SELECT 'Query Performance Test' AS test_type;
 SELECT 
     COUNT(*) AS record_count,
-    MIN(timestamp) AS time_range_start,
-    MAX(timestamp) AS time_range_end,
+    MIN(event_time) AS time_range_start,
+    MAX(event_time) AS time_range_end,
     COUNT(DISTINCT policy_id) AS unique_policies,
     AVG(g_force) AS avg_g_force
 FROM vehicle_telemetry_data

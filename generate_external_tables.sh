@@ -155,43 +155,50 @@ DROP FOREIGN TABLE IF EXISTS vehicle_telemetry_data_v2 CASCADE;
 
 CREATE EXTERNAL TABLE vehicle_telemetry_data_v2 (
   policy_id              BIGINT,
-  vin                    VARCHAR(17),
-  timestamp              TIMESTAMP,
+  vehicle_id             BIGINT,
+  vin                    VARCHAR(255),
+  event_time             VARCHAR(255),
   speed_mph              DOUBLE PRECISION,
-  current_street         VARCHAR(200),
+  speed_limit_mph        DOUBLE PRECISION,
+  current_street         VARCHAR(255),
   g_force                DOUBLE PRECISION,
+  driver_id              VARCHAR(255),
 
-  gps_latitude           DOUBLE PRECISION,
-  gps_longitude          DOUBLE PRECISION,
-  gps_altitude           DOUBLE PRECISION,
-  gps_speed_ms           DOUBLE PRECISION,
-  gps_bearing            DOUBLE PRECISION,
-  gps_accuracy           DOUBLE PRECISION,
-  gps_satellite_count    INTEGER,
-  gps_fix_time           BIGINT,
+  -- GPS sensor data (flattened from sensors.gps)
+  latitude               DOUBLE PRECISION,
+  longitude              DOUBLE PRECISION,
+  altitude               DOUBLE PRECISION,
+  speed_ms               DOUBLE PRECISION,
+  bearing                DOUBLE PRECISION,
+  accuracy               DOUBLE PRECISION,
+  satellite_count        INTEGER,
+  gps_fix_time           INTEGER,
 
+  -- Accelerometer data (flattened from sensors.accelerometer)
   accel_x                DOUBLE PRECISION,
   accel_y                DOUBLE PRECISION,
   accel_z                DOUBLE PRECISION,
 
-  gyro_x                 DOUBLE PRECISION,
-  gyro_y                 DOUBLE PRECISION,
-  gyro_z                 DOUBLE PRECISION,
+  -- Gyroscope data (flattened from sensors.gyroscope)
+  gyro_pitch             DOUBLE PRECISION,
+  gyro_roll              DOUBLE PRECISION,
+  gyro_yaw               DOUBLE PRECISION,
 
+  -- Magnetometer data (flattened from sensors.magnetometer)
   mag_x                  DOUBLE PRECISION,
   mag_y                  DOUBLE PRECISION,
   mag_z                  DOUBLE PRECISION,
-  mag_heading            DOUBLE PRECISION,
+  heading                DOUBLE PRECISION,
 
+  -- Environmental sensors
   barometric_pressure    DOUBLE PRECISION,
 
-  device_battery_level   DOUBLE PRECISION,
-  device_signal_strength INTEGER,
-  device_orientation     VARCHAR(20),
-  device_screen_on       BOOLEAN,
-  device_charging        BOOLEAN,
-
-  processed_timestamp    TIMESTAMP
+  -- Device info (flattened from sensors.device)
+  battery_level          DOUBLE PRECISION,
+  signal_strength        INTEGER,
+  orientation            VARCHAR(255),
+  screen_on              BOOLEAN,
+  charging               BOOLEAN
 )
 LOCATION (
   'pxf://telemetry-data-v2/date=*/part-*.parquet?PROFILE=${PXF_PROFILE:-hdfs:parquet}&SERVER=${PXF_SERVER_NAME:-hdfs-server}'

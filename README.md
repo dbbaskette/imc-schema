@@ -79,12 +79,16 @@ If you prefer to run the steps individually, you can use the separate shell scri
 
 ## 📡 Telemetry Data Integration
 
-This schema now includes PXF external tables that provide SQL access to vehicle telemetry data stored in HDFS by the crash detection application.
+This schema includes PXF external tables for reading telemetry data from HDFS and internal tables for real-time data writes from applications.
 
-### 🧩 External Tables
+### 🧩 Tables Overview
 
--   **`vehicle_telemetry_data`**: Comprehensive vehicle sensor data including GPS, accelerometer, gyroscope, magnetometer, and device health information
+**External Tables (HDFS Reads):**
+-   **`vehicle_telemetry_data`**: Comprehensive vehicle sensor data with flattened JSON schema
 -   **`crash_reports_data`**: Processed crash reports with risk analysis and emergency response recommendations
+
+**Internal Tables (Application Writes):**
+-   **`vehicle_events`**: Real-time telemetry data sink matching flattened JSON structure
 
 ### ✅ Prerequisites for Telemetry Features
 
@@ -97,6 +101,47 @@ This schema now includes PXF external tables that provide SQL access to vehicle 
 **Source Path**: `hdfs://namenode:9000/telemetry-data`
 **Format**: Parquet with Snappy compression
 **Partitioning**: `policy_id=XXX/year=YYYY/month=MM/date=YYYY-MM-DD/`
+
+**Flattened JSON Schema (Corrected):**
+```json
+{
+  "policy_id": 200018,
+  "vehicle_id": 300021,
+  "vin": "1HGBH41JXMN109186",
+  "event_time": "2024-01-15T10:30:45.123Z",
+  "speed_mph": 32.5,
+  "speed_limit_mph": 35,
+  "current_street": "Peachtree Street",
+  "g_force": 1.18,
+  "driver_id": "DRIVER-400018",
+  "gps_latitude": 33.7701,
+  "gps_longitude": -84.3876,
+  "gps_altitude": 351.59,
+  "gps_speed_ms": 14.5,
+  "gps_bearing": 148.37,
+  "gps_accuracy": 2.64,
+  "gps_satellite_count": 11,
+  "gps_fix_time": 150,
+  "accelerometer_x": 0.1234,
+  "accelerometer_y": -0.0567,
+  "accelerometer_z": 0.9876,
+  "gyroscope_pitch": 0.02,
+  "gyroscope_roll": -0.01,
+  "gyroscope_yaw": 0.15,
+  "magnetometer_x": 25.74,
+  "magnetometer_y": -8.73,
+  "magnetometer_z": 40.51,
+  "magnetometer_heading": 148.37,
+  "sensors_barometric_pressure": 1013.25,
+  "device_battery_level": 82.0,
+  "device_signal_strength": -63,
+  "device_orientation": "portrait",
+  "device_screen_on": false,
+  "device_charging": true
+}
+```
+
+> **Note**: Field names match the actual flattened JSON structure with proper prefixes (gps_, accelerometer_, gyroscope_, magnetometer_, sensors_, device_) to avoid naming conflicts and maintain data lineage.
 
 ### 🔌 Remote Connection and Queries
 
@@ -119,12 +164,18 @@ This schema now includes PXF external tables that provide SQL access to vehicle 
 
 ### 📊 Views and Analytics
 
-The schema includes several analytical views:
+The schema includes analytical views for telemetry data:
 
 -   **`v_vehicle_telemetry_enriched`**: Telemetry data joined with customer and vehicle information
--   **`v_high_gforce_events`**: Potential crash events based on G-force thresholds
--   **`v_vehicle_behavior_summary`**: Daily behavior summaries by vehicle
--   **`v_crash_reports_enriched`**: Crash reports with customer context
--   **`v_emergency_response_queue`**: Prioritized list of crashes requiring immediate response
--   **`v_crash_patterns`**: Crash type and severity analysis
--   **`v_crash_hotspots`**: Geographic clustering of crash events
+-   **`v_high_gforce_events`**: Potential crash events based on G-force thresholds (severity classification)
+-   **`v_vehicle_behavior_summary`**: Daily behavior summaries by vehicle with metrics
+-   **`vehicle_events_view`**: Basic view of vehicle events with calculated fields
+
+### 🔧 Schema Updates
+
+**Recent Changes (Current Version):**
+- ✅ Updated all tables to match flattened JSON schema structure
+- ✅ Field names now use proper prefixes: `gps_`, `accelerometer_`, `gyroscope_`, `magnetometer_`, `device_`, `sensors_`
+- ✅ External and internal tables have consistent field naming
+- ✅ Views updated to use correct field references
+- ✅ Database schema successfully recreated with new structure

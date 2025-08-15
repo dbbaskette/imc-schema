@@ -9,10 +9,10 @@ CREATE VIEW v_vehicle_telemetry_enriched AS
 SELECT 
     vt.*,
     -- Calculate derived metrics
-    SQRT(accel_x*accel_x + accel_y*accel_y + accel_z*accel_z) / 9.81 AS calculated_g_force,
-    SQRT(accel_x*accel_x + accel_y*accel_y) / 9.81 AS lateral_g_force,
-    ABS((accel_z - 9.81) / 9.81) AS vertical_g_force,
-    SQRT(gyro_x*gyro_x + gyro_y*gyro_y + gyro_z*gyro_z) AS gyro_magnitude,
+    SQRT(accelerometer_x*accelerometer_x + accelerometer_y*accelerometer_y + accelerometer_z*accelerometer_z) / 9.81 AS calculated_g_force,
+    SQRT(accelerometer_x*accelerometer_x + accelerometer_y*accelerometer_y) / 9.81 AS lateral_g_force,
+    ABS((accelerometer_z - 9.81) / 9.81) AS vertical_g_force,
+    SQRT(gyroscope_pitch*gyroscope_pitch + gyroscope_roll*gyroscope_roll + gyroscope_yaw*gyroscope_yaw) AS gyro_magnitude,
     
     -- Add vehicle and policy information via joins
     v.make,
@@ -34,16 +34,17 @@ CREATE VIEW v_high_gforce_events AS
 SELECT 
     policy_id,
     vin,
-    timestamp,
+    event_time,
     current_street,
     speed_mph,
+    speed_limit_mph,
     g_force,
     gps_latitude,
     gps_longitude,
-    accel_x,
-    accel_y,
-    accel_z,
-    SQRT(accel_x*accel_x + accel_y*accel_y + accel_z*accel_z) / 9.81 AS calculated_g_force,
+    accelerometer_x,
+    accelerometer_y,
+    accelerometer_z,
+    SQRT(accelerometer_x*accelerometer_x + accelerometer_y*accelerometer_y + accelerometer_z*accelerometer_z) / 9.81 AS calculated_g_force,
     CASE 
         WHEN g_force >= 8.0 THEN 'CRITICAL'
         WHEN g_force >= 6.0 THEN 'SEVERE'
@@ -53,7 +54,7 @@ SELECT
     END AS severity_level
 FROM vehicle_telemetry_data
 WHERE g_force >= 2.0
-ORDER BY g_force DESC, timestamp DESC;
+ORDER BY g_force DESC, event_time DESC;
 
 -- Create a view for vehicle behavior analysis
 CREATE VIEW v_vehicle_behavior_summary AS
@@ -68,6 +69,7 @@ SELECT
     MAX(g_force) AS max_g_force,
     COUNT(*) FILTER (WHERE g_force > 2.0) AS high_gforce_events,
     COUNT(*) FILTER (WHERE speed_mph > 80) AS speeding_events,
+    COUNT(*) FILTER (WHERE speed_mph > speed_limit_mph) AS speed_limit_violations,
     AVG(device_battery_level) AS avg_battery_level,
     AVG(gps_accuracy) AS avg_gps_accuracy
 FROM vehicle_telemetry_data
@@ -88,7 +90,7 @@ SELECT
     c.first_name,
     c.last_name,
     c.email,
-    c.phone,
+    c.phone_number,
     c.address,
     c.city,
     c.state,
@@ -131,7 +133,7 @@ SELECT
     crash_latitude,
     crash_longitude,
     first_name || ' ' || last_name AS customer_name,
-    phone,
+    phone_number,
     make || ' ' || model || ' (' || vehicle_year || ')' AS vehicle_description,
     CASE 
         WHEN emergency_recommended AND risk_score >= 90 THEN 1
