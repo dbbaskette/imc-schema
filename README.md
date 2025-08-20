@@ -19,15 +19,15 @@ This directory contains the complete SQL schema and sample data for the Insuranc
 
 ## 🛡️ **NEW: Advanced Safe Driver Scoring System**
 
-**[📊 View Complete Safe Driver Documentation →](SAFE_DRIVER_SCORING.md)**
+**[📊 View Complete Safe Driver Documentation →](SAFE_DRIVER_ML_SYSTEM.md)**
 
-Our cutting-edge **MADlib Machine Learning** system analyzes real-time telemetry data to generate predictive safety scores:
+Our production **MADlib Machine Learning** system analyzes real-time telemetry data to generate predictive safety scores:
 
-- 🧠 **Logistic Regression ML Model** trained on driver behavior patterns
+- 🧠 **MADlib Logistic Regression** trained on driver behavior patterns
 - 📊 **Real-time Scoring** from telemetry data (speed, g-force, phone usage)
 - 🎯 **Risk Categories** from Excellent to High-Risk with intervention triggers
-- 📈 **Dashboard-Ready APIs** for monitoring UI integration
-- ⚡ **93%+ Accuracy** in identifying accident-prone drivers
+- 📈 **Production APIs** for dashboard integration
+- ⚡ **93.4% Accuracy** in identifying accident-prone drivers
 
 **Current Results**: 15 drivers analyzed, ranging from 93.89 (excellent) to 57.83 (high-risk)
 
