@@ -14,7 +14,7 @@ This plan outlines the steps to create a comprehensive Greenplum database schema
         -   `drivers`: Information on all named drivers on a policy.
         -   `accidents`: Records of reported accidents, capturing telematics-like data.
         -   `claims`: Tracks insurance claims filed in relation to accidents.
-        -   `driver_safety_scores`: A table to hold calculated safety scores for drivers (to be populated later).
+        -   `safe_driver_scores`: A table to hold calculated safety scores for drivers (to be populated later).
     3.  Define primary and foreign key relationships to ensure data integrity.
 
 ### Step 2: Write DDL for Schema Creation
@@ -33,7 +33,7 @@ This plan outlines the steps to create a comprehensive Greenplum database schema
     1.  Write `INSERT` statements for the `customers`, `policies`, `vehicles`, and `drivers` tables, ensuring `policy_number` matches the `IMC-AUTO-XXXXX` format.
     2.  Create a set of `accidents`, linking them to the policies, vehicles, and drivers.
     3.  Generate `claims` for a subset of the accidents, with varying statuses (`PENDING`, `APPROVED`, `DENIED`).
-    4.  **Crucially**, the `driver_safety_scores` table will be created but left empty, as per the request.
+    4.  **Crucially**, the `safe_driver_scores` table will be created but left empty, as per the request.
 
 ### Step 4: Consolidate and Finalize the SQL Script
 

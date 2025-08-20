@@ -24,7 +24,7 @@ BEGIN;
 \i policies.sql
 \i vehicles.sql
 \i drivers.sql
-\i driver_safety_scores.sql
+\i safe_driver_scores.sql
 \i accidents.sql
 \i claims.sql
 

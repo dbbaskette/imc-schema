@@ -64,7 +64,7 @@ CREATE VIEW v_vehicle_behavior_summary AS
 SELECT 
     policy_id,
     vin,
-    DATE(event_time) as date,
+    DATE(TO_TIMESTAMP(event_time::DOUBLE PRECISION / 1000)) as date,
     COUNT(*) AS record_count,
     AVG(speed_mph) AS avg_speed,
     MAX(speed_mph) AS max_speed,
@@ -76,8 +76,8 @@ SELECT
     AVG(device_battery_level) AS avg_battery_level,
     AVG(gps_accuracy) AS avg_gps_accuracy
 FROM vehicle_telemetry_data_v2
-GROUP BY policy_id, vin, DATE(event_time)
-ORDER BY DATE(event_time) DESC, policy_id;
+GROUP BY policy_id, vin, DATE(TO_TIMESTAMP(event_time::DOUBLE PRECISION / 1000))
+ORDER BY DATE(TO_TIMESTAMP(event_time::DOUBLE PRECISION / 1000)) DESC, policy_id;
 
 -- Create a comprehensive view for crash analysis
 DROP VIEW IF EXISTS v_crash_reports_enriched CASCADE;

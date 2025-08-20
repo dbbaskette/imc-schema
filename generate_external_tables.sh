@@ -130,7 +130,7 @@ CREATE EXTERNAL TABLE crash_reports_data (
   risk_score DOUBLE PRECISION,
   processed_timestamp TIMESTAMP
 )
-LOCATION ('pxf://accident-reports/severity_level=*/report_date=*/part-*.parquet?PROFILE=${PXF_PROFILE:-hdfs:parquet}&SERVER=${PXF_SERVER_NAME:-default}')
+LOCATION ('pxf://accident-reports/severity_level=*/report_date=*/part-*.parquet?PROFILE=${PXF_PROFILE:-hdfs:parquet}&SERVER=${PXF_SERVER_NAME:-default}&IGNORE_MISSING_PATH=true')
 FORMAT 'CUSTOM' (FORMATTER='pxfwritable_import');
 
 -- Note: Partition columns (severity_level, report_date) live in directory names and are not present in Parquet schema
@@ -142,7 +142,7 @@ echo "  - vehicle_telemetry_data_generated.sql"
 echo "  - crash_reports_data_generated.sql"
 
 # =============================================================================
-# V2 Telemetry (policy_id not used as PXF partition; new path root)
+# V2 Telemetry (Flattened schema with date-only partitioning)
 # =============================================================================
 
 cat > "$SCRIPT_DIR/vehicle_telemetry_data_v2_generated.sql" << EOF
@@ -158,9 +158,9 @@ CREATE EXTERNAL TABLE vehicle_telemetry_data_v2 (
   policy_id              BIGINT,
   vehicle_id             BIGINT,
   vin                    VARCHAR(17),
-  event_time             TIMESTAMP,
+  event_time             TEXT,
   speed_mph              DOUBLE PRECISION,
-  speed_limit_mph        DOUBLE PRECISION,
+  speed_limit_mph        INTEGER,
   current_street         VARCHAR(200),
   g_force                DOUBLE PRECISION,
   driver_id              INTEGER,
@@ -195,14 +195,14 @@ CREATE EXTERNAL TABLE vehicle_telemetry_data_v2 (
   barometric_pressure    DOUBLE PRECISION,
 
   -- Device info (flattened)
-  device_battery_level   DOUBLE PRECISION,
+  device_battery_level   INTEGER,
   device_signal_strength INTEGER,
   device_orientation     VARCHAR(20),
   device_screen_on       BOOLEAN,
   device_charging        BOOLEAN
 )
 LOCATION (
-  'pxf://telemetry-data-v2/*/driver_id=*/telemetry-*.parquet?PROFILE=${PXF_PROFILE:-hdfs:parquet}&SERVER=${PXF_SERVER_NAME:-hdfs-server}'
+  'pxf://telemetry-data-v2/date=*/telemetry-*.parquet?PROFILE=${PXF_PROFILE:-hdfs:parquet}&SERVER=${PXF_SERVER_NAME:-hdfs-server}&IGNORE_MISSING_PATH=true'
 )
 FORMAT 'CUSTOM' (FORMATTER='pxfwritable_import');
 

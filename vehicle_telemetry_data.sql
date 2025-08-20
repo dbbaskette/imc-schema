@@ -65,5 +65,5 @@ CREATE EXTERNAL TABLE vehicle_telemetry_data (
     date VARCHAR(10),
     driver_id_partition INTEGER
 )
-LOCATION ('pxf://__TELEMETRY_PATH__?PROFILE=__PXF_PROFILE__&SERVER=__PXF_SERVER__')
+LOCATION ('pxf://__TELEMETRY_PATH__?PROFILE=__PXF_PROFILE__&SERVER=__PXF_SERVER__&IGNORE_MISSING_PATH=true')
 FORMAT 'CUSTOM' (FORMATTER='pxfwritable_import');

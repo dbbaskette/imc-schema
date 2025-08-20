@@ -14,3 +14,6 @@ release.sh
 .idea/
 .vscode/
 
+config.env
+config.env.backup*.yml
+*.properties

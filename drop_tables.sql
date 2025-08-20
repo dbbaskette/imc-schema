@@ -21,7 +21,7 @@ DROP EXTERNAL TABLE IF EXISTS vehicle_telemetry_data;
 -- Drop regular tables
 DROP TABLE IF EXISTS claims;
 DROP TABLE IF EXISTS accidents;
-DROP TABLE IF EXISTS driver_safety_scores;
+DROP TABLE IF EXISTS safe_driver_scores;
 DROP TABLE IF EXISTS drivers;
 DROP TABLE IF EXISTS vehicles;
 DROP TABLE IF EXISTS policies;
