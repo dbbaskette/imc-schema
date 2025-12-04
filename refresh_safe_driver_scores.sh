@@ -4,9 +4,31 @@
 # =============================================================================
 # Automates the recalculation of safe driver scores when new data arrives
 # Can be run manually or scheduled via cron
+#
+# Usage:
+#   ./refresh_safe_driver_scores.sh [--force]
+#
+# Options:
+#   --force    Force model retraining regardless of day or new accidents
 # =============================================================================
 
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
+
+# Parse command line arguments
+FORCE_RETRAIN=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --force)
+            FORCE_RETRAIN=true
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: $0 [--force]"
+            exit 1
+            ;;
+    esac
+done
 
 # Load configuration
 source config.env
@@ -44,15 +66,38 @@ log "✅ Database connection successful"
 
 # Step 2: Check for new telemetry data
 log "Step 2: Checking for new telemetry data..."
-NEW_RECORDS=$(PGDATABASE="$TARGET_DATABASE" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -t -c "
-    SELECT COUNT(*) 
-    FROM vehicle_telemetry_data_v2 vtd
-    LEFT JOIN driver_behavior_features dbf ON vtd.driver_id = dbf.driver_id
-    WHERE vtd.event_time > COALESCE(dbf.last_updated, '2024-01-01'::timestamp)
-       OR dbf.driver_id IS NULL;
+
+# Check if driver_behavior_features table exists and has last_updated column
+TABLE_EXISTS=$(PGDATABASE="$TARGET_DATABASE" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -t -c "
+    SELECT COUNT(*) FROM information_schema.tables
+    WHERE table_name = 'driver_behavior_features';
 " | xargs)
 
-log "Found $NEW_RECORDS new/updated telemetry records"
+COLUMN_EXISTS=0
+if [ "$TABLE_EXISTS" -eq 1 ]; then
+    COLUMN_EXISTS=$(PGDATABASE="$TARGET_DATABASE" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -t -c "
+        SELECT COUNT(*) FROM information_schema.columns
+        WHERE table_name = 'driver_behavior_features'
+        AND column_name = 'last_updated';
+    " | xargs)
+fi
+
+if [ "$TABLE_EXISTS" -eq 0 ] || [ "$COLUMN_EXISTS" -eq 0 ]; then
+    log "⚠️  driver_behavior_features table/column doesn't exist yet - first time setup"
+    log "Will process all telemetry data..."
+    NEW_RECORDS=1  # Force processing
+else
+    # Table and column exist, check for new data since last update
+    NEW_RECORDS=$(PGDATABASE="$TARGET_DATABASE" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -t -c "
+        SELECT COUNT(*)
+        FROM vehicle_telemetry_data_v2 vtd
+        LEFT JOIN driver_behavior_features dbf ON vtd.driver_id = dbf.driver_id
+        WHERE vtd.event_time::timestamp > COALESCE(dbf.last_updated, '2024-01-01'::timestamp)
+           OR dbf.driver_id IS NULL;
+    " | xargs)
+
+    log "Found $NEW_RECORDS new/updated telemetry records"
+fi
 
 if [ "$NEW_RECORDS" -eq 0 ]; then
     log "No new data found. Exiting."
@@ -77,45 +122,55 @@ STATS=$(PGDATABASE="$TARGET_DATABASE" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER
 log "✅ Recalculation completed successfully"
 log "📊 Results: $STATS"
 
-# Step 5: Update model if needed (weekly on Sundays)
-if [ "$(date +%u)" = "7" ]; then  # Sunday = 7
+# Step 5: Update model if needed (weekly on Sundays or --force)
+if [ "$FORCE_RETRAIN" = true ]; then
+    log "Step 5: FORCED model retraining requested..."
+    SHOULD_RETRAIN=true
+elif [ "$(date +%u)" = "7" ]; then  # Sunday = 7
     log "Step 5: Weekly model retraining (Sunday)..."
-    
+
     # Check if we have enough data changes to justify retraining
     ACCIDENT_CHANGES=$(PGDATABASE="$TARGET_DATABASE" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -t -c "
-        SELECT COUNT(*) FROM accidents 
+        SELECT COUNT(*) FROM accidents
         WHERE created_date > (NOW() - INTERVAL '7 days');
     " | xargs)
-    
+
     if [ "$ACCIDENT_CHANGES" -gt 0 ]; then
         log "Found $ACCIDENT_CHANGES new accidents - retraining model..."
-        
-        PGDATABASE="$TARGET_DATABASE" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -c "
-            -- Retrain model
-            DROP TABLE IF EXISTS driver_accident_model CASCADE;
-            DROP TABLE IF EXISTS driver_accident_model_summary CASCADE;
-            
-            SELECT madlib.logregr_train(
-                'driver_ml_training_data',
-                'driver_accident_model', 
-                'has_accident',
-                'ARRAY[1, speed_compliance_rate, avg_g_force, harsh_driving_events, phone_usage_rate, speed_variance]',
-                NULL,
-                20,
-                'irls'
-            );
-        " >> "$LOG_FILE" 2>&1
-        
-        log "✅ Model retrained successfully"
-        
-        # Recalculate scores with new model
-        log "Recalculating scores with updated model..."
-        PGDATABASE="$TARGET_DATABASE" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -f recalculate_safe_driver_scores.sql >> "$LOG_FILE" 2>&1
+        SHOULD_RETRAIN=true
     else
         log "No new accidents - skipping model retrain"
+        SHOULD_RETRAIN=false
     fi
 else
-    log "Step 5: Skipping model retrain (not Sunday)"
+    log "Step 5: Skipping model retrain (not Sunday, use --force to override)"
+    SHOULD_RETRAIN=false
+fi
+
+if [ "$SHOULD_RETRAIN" = true ]; then
+    log "🔄 Retraining model..."
+
+    PGDATABASE="$TARGET_DATABASE" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -c "
+        -- Retrain model
+        DROP TABLE IF EXISTS driver_accident_model CASCADE;
+        DROP TABLE IF EXISTS driver_accident_model_summary CASCADE;
+
+        SELECT madlib.logregr_train(
+            'driver_ml_training_data',
+            'driver_accident_model',
+            'has_accident',
+            'ARRAY[1, speed_compliance_rate, avg_g_force, harsh_driving_events, phone_usage_rate, speed_variance]',
+            NULL,
+            20,
+            'irls'
+        );
+    " >> "$LOG_FILE" 2>&1
+
+    log "✅ Model retrained successfully"
+
+    # Recalculate scores with new model
+    log "Recalculating scores with updated model..."
+    PGDATABASE="$TARGET_DATABASE" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -f recalculate_safe_driver_scores.sql >> "$LOG_FILE" 2>&1
 fi
 
 # Step 6: Send alerts for high-risk drivers

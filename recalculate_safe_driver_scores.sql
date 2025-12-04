@@ -25,7 +25,7 @@ SELECT
     ) as speed_compliance_rate,
     
     -- Driving smoothness (secondary ML feature - 25% impact)
-    ROUND(AVG(g_force), 4) as avg_g_force,
+    ROUND(AVG(g_force)::NUMERIC, 4) as avg_g_force,
     COUNT(*) FILTER (WHERE g_force > 1.5) as harsh_driving_events,
     
     -- Distraction indicators (15% impact)
@@ -35,11 +35,11 @@ SELECT
     ) as phone_usage_rate,
     
     -- Speed consistency (5% impact)
-    ROUND(STDDEV(speed_mph), 2) as speed_variance,
-    
+    ROUND(STDDEV(speed_mph)::NUMERIC, 2) as speed_variance,
+
     -- Additional metrics for analysis
-    ROUND(AVG(speed_mph), 2) as avg_speed,
-    ROUND(MAX(speed_mph), 2) as max_speed,
+    ROUND(AVG(speed_mph)::NUMERIC, 2) as avg_speed,
+    ROUND(MAX(speed_mph)::NUMERIC, 2) as max_speed,
     COUNT(*) FILTER (WHERE speed_mph > speed_limit_mph + 10) as excessive_speeding_count,
     
     -- Timestamp
@@ -86,7 +86,6 @@ ALTER TABLE driver_ml_training_data_new RENAME TO driver_ml_training_data;
 -- Normally you would retrain weekly or when significant new patterns emerge
 -- =============================================================================
 
-/*
 -- Drop existing model
 DROP TABLE IF EXISTS driver_accident_model CASCADE;
 DROP TABLE IF EXISTS driver_accident_model_summary CASCADE;
@@ -96,14 +95,13 @@ SELECT madlib.logregr_train(
     'driver_ml_training_data',                    -- Training dataset
     'driver_accident_model',                      -- Output model table
     'has_accident',                               -- Target variable (0/1)
-    'ARRAY[1, speed_compliance_rate, avg_g_force, 
-           harsh_driving_events, phone_usage_rate, 
+    'ARRAY[1, speed_compliance_rate, avg_g_force,
+           harsh_driving_events, phone_usage_rate,
            speed_variance]',                      -- Feature vector with intercept
     NULL,                                         -- No grouping
     20,                                           -- Max iterations
     'irls'                                        -- Iteratively Reweighted Least Squares
 );
-*/
 
 -- Step 4: Calculate New Safety Scores
 -- =============================================================================
