@@ -10,15 +10,16 @@ set -e # Exit immediately if a command exits with a non-zero status.
 # Usage: ./setup_remote_database.sh [environment]
 # =============================================================================
 
-SCRIPT_DIR=$(dirname "$0")
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Load configuration
-if [ -f "$SCRIPT_DIR/config.env" ]; then
+if [ -f "$REPO_ROOT/config.env" ]; then
     echo "Loading configuration from config.env..."
-    source "$SCRIPT_DIR/config.env"
+    source "$REPO_ROOT/config.env"
 else
     echo "❌ Error: config.env not found!"
-    echo "Please copy config.env.example to config.env and update with your settings."
+    echo "Please copy config/config.env.example to config.env and update with your settings."
     exit 1
 fi
 
@@ -238,17 +239,17 @@ echo "Generating external table definitions with current HDFS paths..."
 # Create the database schema
 echo "Creating database schema..."
 if [ "$PSQL_VERBOSE" = "true" ]; then
-    psql -f "$SCRIPT_DIR/create_schema.sql" | tee "$DB_LOG_FILE"
+    psql -f "$REPO_ROOT/sql/utilities/create_schema.sql" | tee "$DB_LOG_FILE"
 else
-    psql -f "$SCRIPT_DIR/create_schema.sql"
+    psql -f "$REPO_ROOT/sql/utilities/create_schema.sql"
 fi
 
 echo ""
 echo "=== Loading Sample Data ==="
 if [ "$PSQL_VERBOSE" = "true" ]; then
-    psql -f "$SCRIPT_DIR/load_sample_data.sql" | tee -a "$DB_LOG_FILE"
+    psql -f "$REPO_ROOT/sql/utilities/load_sample_data.sql" | tee -a "$DB_LOG_FILE"
 else
-    psql -f "$SCRIPT_DIR/load_sample_data.sql"
+    psql -f "$REPO_ROOT/sql/utilities/load_sample_data.sql"
 fi
 
 echo ""
@@ -283,5 +284,5 @@ read -p "Would you like to run basic validation queries now? (y/N): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Running validation queries..."
-    psql -f "$SCRIPT_DIR/sample_telemetry_queries.sql" | head -50
+    psql -f "$REPO_ROOT/sql/utilities/sample_telemetry_queries.sql" | head -50
 fi

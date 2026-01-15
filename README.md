@@ -2,213 +2,218 @@
 
 <img alt="Insurance MegaCorp" src="assets/imc-schema-banner.png" width="40%" />
 
-<h2>🛡️ Insurance MegaCorp · Telemetry & Claims Schema</h2>
+<h2>Insurance MegaCorp - Telemetry & Claims Schema</h2>
 <p>
-  <strong>Greenplum + PXF + HDFS</strong> · Real‑time telematics and crash analytics
+  <strong>Greenplum + PXF + HDFS</strong> - Real-time telematics and crash analytics
 </p>
 
 </div>
 
-This directory contains the complete SQL schema and sample data for the Insurance MegaCorp (IMC) demo application. The scripts are designed for Greenplum and PostgreSQL databases.
+This repository contains the complete SQL schema, ML pipelines, and operational scripts for the Insurance MegaCorp (IMC) demo application. Designed for Greenplum databases with PXF external tables and HDFS integration.
 
-## ⚙️ Prerequisites
+## Prerequisites
 
--   `psql` (PostgreSQL command-line client) must be installed and in your system's PATH.
--   A running PostgreSQL or Greenplum database instance.
--   A database user with permissions to create tables and insert data.
+- `psql` (PostgreSQL command-line client) in your system's PATH
+- A running Greenplum database instance with PXF enabled
+- HDFS cluster access for telemetry data
+- Python 3.7+ for consolidation tools (optional)
 
-## 🛡️ **NEW: Advanced Safe Driver Scoring System**
+## Repository Structure
 
-**[📊 View Complete Safe Driver Documentation →](SAFE_DRIVER_ML_SYSTEM.md)**
-
-Our production **MADlib Machine Learning** system analyzes real-time telemetry data to generate predictive safety scores:
-
-- 🧠 **MADlib Logistic Regression** trained on driver behavior patterns
-- 📊 **Real-time Scoring** from telemetry data (speed, g-force, phone usage)
-- 🎯 **Risk Categories** from Excellent to High-Risk with intervention triggers
-- 📈 **Production APIs** for dashboard integration
-- ⚡ **93.4% Accuracy** in identifying accident-prone drivers
-
-**Current Results**: 15 drivers analyzed, ranging from 93.89 (excellent) to 57.83 (high-risk)
-
----
-
-## 📁 Directory Structure
-
-The project is organized into a modular structure for easy maintenance and extension:
-
--   `schema/`: Contains individual `.sql` files, each defining the `CREATE TABLE` statement for a single database table.
--   `data/`: Contains individual `.sql` files, each holding the `INSERT` statements to populate a single table with realistic sample data.
--   `create_schema.sql`: A master `psql` script that executes all files in the `schema/` directory in the correct order to build the database structure.
--   `load_sample_data.sql`: A master `psql` script that executes all files in the `data/` directory to populate the tables.
--   `drop_tables.sql`: A utility script to safely drop all tables in the correct dependency order.
--   `*.sh`: Convenience shell scripts for automating the setup process.
-
-## 🚀 Quick Setup
-
-### 🌐 Remote Database Setup (Recommended)
-
-The recommended approach is to connect directly from your local machine to the remote Greenplum cluster:
-
-1.  **Configure connection settings:**
-    ```sh
-    cp config.env.example config.env
-    # Edit config.env with your actual database and HDFS settings
-    ```
-
-2.  **Make scripts executable:**
-    ```sh
-    chmod +x *.sh
-    ```
-
-3.  **Run the remote setup script:**
-    ```sh
-    ./setup_remote_database.sh [environment]
-    ```
-    
-    This will:
-    - Validate your configuration
-    - Test database and HDFS connectivity  
-    - Create the schema with dynamic external table paths
-    - Load sample data
-    - Optionally run validation queries
-
-### 💻 Local Database Setup (Legacy)
-
-For local database setup, you can still use the original approach:
-
-```sh
-./setup_database.sh your_database_name
+```
+imc-schema/
+├── config.env                    # Configuration (copy from config/config.env.example)
+├── README.md                     # This file
+│
+├── docs/                         # Documentation
+│   ├── SAFE_DRIVER_ML_SYSTEM.md  # ML system documentation
+│   ├── REFRESH_SCRIPT_USAGE.md   # Score refresh guide
+│   ├── PARQUET_CONSOLIDATION.md  # Data consolidation guide
+│   ├── json-schema.md            # Telemetry JSON schema
+│   └── archive/                  # Historical/deprecated docs
+│
+├── sql/                          # SQL scripts
+│   ├── core/                     # Base table definitions
+│   │   ├── customers.sql
+│   │   ├── policies.sql
+│   │   ├── vehicles.sql
+│   │   ├── drivers.sql
+│   │   ├── accidents.sql
+│   │   └── claims.sql
+│   ├── ml/                       # Machine learning tables
+│   │   ├── safe_driver_scores.sql
+│   │   └── recalculate_safe_driver_scores.sql
+│   ├── external/                 # PXF external tables
+│   │   └── recreate_vehicle_events.sql
+│   ├── views/                    # Analytical views
+│   │   └── telemetry_views.sql
+│   ├── utilities/                # Utility scripts
+│   │   ├── create_schema.sql     # Master schema creation
+│   │   ├── drop_tables.sql       # Drop all tables
+│   │   ├── load_sample_data.sql  # Sample data
+│   │   ├── sample_telemetry_queries.sql
+│   │   └── fix_corrupted_telemetry.sql
+│   └── archive/                  # Legacy SQL (v1 tables)
+│
+├── scripts/                      # Shell scripts
+│   ├── setup/                    # Database setup
+│   │   ├── setup_remote_database.sh  # Primary setup script
+│   │   ├── create_schema.sh
+│   │   ├── generate_external_tables.sh
+│   │   └── setup_consolidation_env.sh
+│   ├── ml/                       # ML operations
+│   │   ├── refresh_safe_driver_scores.sh      # Main refresh
+│   │   ├── refresh_safe_driver_scores_fixed.sh # Corrupted data workaround
+│   │   └── train_model_now.sh
+│   ├── consolidation/            # Telemetry data management
+│   │   ├── cleanup_telemetry_files.sh
+│   │   ├── count_telemetry_files.sh
+│   │   ├── run_consolidation.sh
+│   │   └── preview_consolidation.sh
+│   ├── utilities/                # General utilities
+│   │   ├── connect_remote.sh
+│   │   ├── test_external_tables.sh
+│   │   ├── test_connectivity.sh
+│   │   └── run_on_remote.sh
+│   └── archive/                  # Deprecated scripts
+│
+├── python/                       # Python tools
+│   ├── parquet_consolidator.py   # Main consolidation engine
+│   ├── consolidate_remote.py     # SSH-based consolidation
+│   ├── demo_consolidation.py     # Demo/testing
+│   └── requirements-consolidation.txt
+│
+├── config/                       # Configuration templates
+│   └── config.env.example
+│
+├── archive/                      # Archived/deprecated files
+│
+└── logs/                         # Runtime logs (gitignored)
 ```
 
-## 🧰 Manual Setup
+## Quick Start
 
-If you prefer to run the steps individually, you can use the separate shell scripts to create the schema and load the data. This is useful if you want to reset the data without altering the schema.
+### 1. Configure Connection
 
-```sh
-# 1. Create the schema
-./create_schema.sh your_database_name
-
-# 2. Load the sample data
-./load_sample_data.sh your_database_name
-```
-
-## 📡 Telemetry Data Integration
-
-This schema includes PXF external tables for reading telemetry data from HDFS and internal tables for real-time data writes from applications.
-
-### 🧩 Tables Overview
-
-**🛡️ ML-Powered Tables:**
--   **`safe_driver_scores`**: MADlib-generated safety scores (0-100) with risk categories and ML model insights
-
-**External Tables (HDFS Reads):**
--   **`vehicle_telemetry_data_v2`**: New flattened vehicle sensor data (recommended for new applications)
--   **`vehicle_telemetry_data`**: Legacy vehicle sensor data (original nested format)
--   **`crash_reports_data`**: Processed crash reports with risk analysis and emergency response recommendations
-
-**Internal Tables (Application Writes):**
--   **`vehicle_events`**: Real-time telemetry data sink optimized for JDBC streaming
-
-### ✅ Prerequisites for Telemetry Features
-
-1.  **PXF Service**: Greenplum PXF must be running and configured
-2.  **HDFS Access**: Connection to HDFS namenode (default: `hdfs://namenode:9000`)
-3.  **Telemetry Data**: The imc-crash-detection application must be writing data to HDFS
-
-### 🗂️ Telemetry Data Structure
-
-#### **Current Format (v2) - Recommended**
-**Source Path**: `/insurance-megacorp/telemetry-data-v2/`
-**Format**: Parquet with Snappy compression  
-**Partitioning**: `/YYYY-MM-DD/driver_id=XXX/telemetry-*.parquet`
-
-**Optimized Flattened JSON Schema:**
-```json
-{
-  "policy_id": 200018,
-  "vehicle_id": 300021,
-  "vin": "1HGBH41JXMN109186",
-  "event_time": "2024-01-15T10:30:45.123Z",
-  "speed_mph": 32.5,
-  "speed_limit_mph": 35,
-  "current_street": "Peachtree Street",
-  "g_force": 1.18,
-  "driver_id": 400018,
-  
-  "gps_latitude": 33.7701,
-  "gps_longitude": -84.3876,
-  "gps_altitude": 351.59,
-  "gps_speed": 14.5,
-  "gps_bearing": 148.37,
-  "gps_accuracy": 2.64,
-  "gps_satellite_count": 11,
-  "gps_fix_time": 150,
-  
-  "accelerometer_x": 0.1234,
-  "accelerometer_y": -0.0567,
-  "accelerometer_z": 0.9876,
-  
-  "gyroscope_x": 0.02,
-  "gyroscope_y": -0.01,
-  "gyroscope_z": 0.15,
-  
-  "magnetometer_x": 25.74,
-  "magnetometer_y": -8.73,
-  "magnetometer_z": 40.51,
-  "magnetometer_heading": 148.37,
-  
-  "barometric_pressure": 1013.25,
-  
-  "device_battery_level": 82,
-  "device_signal_strength": -63,
-  "device_orientation": "portrait",
-  "device_screen_on": false,
-  "device_charging": true
-}
-```
-
-#### **Legacy Format (v1)**
-**Source Path**: `/insurance-megacorp/telemetry-data/`  
-**Partitioning**: `policy_id=XXX/year=YYYY/month=MM/date=YYYY-MM-DD/`
-
-> **✅ Schema Changes**: All field names now use consistent flat naming without prefixes for optimal performance. Driver ID is now INTEGER type for better joins and indexing.
-
-### 🔌 Remote Connection and Queries
-
-**Connect to remote database:**
 ```bash
-./connect_remote.sh                    # Interactive session
-./connect_remote.sh -f script.sql     # Execute SQL file
-./connect_remote.sh -c "SELECT 1;"    # Single command
+cp config/config.env.example config.env
+# Edit config.env with your database and HDFS settings
 ```
 
-**Test external tables:**
+### 2. Setup Database
+
 ```bash
-./test_external_tables.sh             # Comprehensive connectivity test
+chmod +x scripts/**/*.sh
+./scripts/setup/setup_remote_database.sh
 ```
 
-**Run sample telemetry queries:**
+This will:
+- Validate configuration
+- Test database and HDFS connectivity
+- Create schema with external tables
+- Load sample data
+
+### 3. Test External Tables
+
 ```bash
-./connect_remote.sh -f sample_telemetry_queries.sql
+./scripts/utilities/test_external_tables.sh
 ```
 
-### 📊 Views and Analytics
+## Safe Driver ML System
 
-The schema includes analytical views for telemetry data:
+Our production **MADlib Machine Learning** system analyzes telemetry data to generate predictive safety scores.
 
--   **`v_vehicle_telemetry_enriched`**: Telemetry data joined with customer and vehicle information
--   **`v_high_gforce_events`**: Potential crash events based on G-force thresholds (severity classification)
--   **`v_vehicle_behavior_summary`**: Daily behavior summaries by vehicle with metrics
--   **`vehicle_events_view`**: Basic view of vehicle events with calculated fields
+**[View Complete Documentation](docs/SAFE_DRIVER_ML_SYSTEM.md)**
 
-### 🔧 Recent Schema Updates
+### Refresh Scores
 
-**✅ Version 2.0 (Current) - Optimized Flat Schema:**
-- 🚀 **Performance**: Removed field prefixes for optimal query performance
-- 🔧 **Data Types**: `driver_id` changed to `INTEGER` for better indexing and joins
-- 📊 **Field Names**: Simplified naming: `gps_speed` (not `gps_speed_ms`), `gyroscope_x/y/z` (not `pitch/roll/yaw`)
-- 🗂️ **Partitioning**: New date-based partitioning `/YYYY-MM-DD/driver_id=*/` for improved query pruning
-- 📈 **Tables**: All internal and external tables updated with consistent schema
-- 🔍 **Views**: Analytical views rebuilt to use new field structure
-- ✅ **Status**: Database successfully updated and ready for production
+```bash
+# Standard refresh (checks for new data)
+./scripts/ml/refresh_safe_driver_scores.sh
+
+# Force model retraining
+./scripts/ml/refresh_safe_driver_scores.sh --force
+```
+
+### Features
+- MADlib Logistic Regression trained on driver behavior
+- Real-time scoring from telemetry (speed, g-force, phone usage)
+- Risk categories: Excellent, Good, Average, Poor, High-Risk
+- 93.4% accuracy in identifying accident-prone drivers
+
+## Telemetry Data Management
+
+### Count Files by Date
+
+```bash
+./scripts/consolidation/count_telemetry_files.sh
+./scripts/consolidation/count_telemetry_files.sh --month 2025-12
+./scripts/consolidation/count_telemetry_files.sh --year 2025
+```
+
+### Consolidate Parquet Files
+
+Merge many small files into larger ones for better performance:
+
+```bash
+# Preview what would happen
+./scripts/consolidation/run_consolidation.sh --date 2025-12-15 --dry-run
+
+# Execute consolidation
+./scripts/consolidation/run_consolidation.sh --date 2025-12-15
+```
+
+### Cleanup Corrupted Files
+
+Remove tiny/corrupted files (<=1KB):
+
+```bash
+./scripts/consolidation/cleanup_telemetry_files.sh
+```
+
+## Database Connection
+
+```bash
+# Interactive session
+./scripts/utilities/connect_remote.sh
+
+# Execute SQL file
+./scripts/utilities/connect_remote.sh -f sql/utilities/sample_telemetry_queries.sql
+
+# Single command
+./scripts/utilities/connect_remote.sh -c "SELECT COUNT(*) FROM vehicle_telemetry_data_v2;"
+```
+
+## Tables Overview
+
+### ML Tables
+- **`safe_driver_scores`**: MADlib-generated safety scores (0-100)
+- **`driver_behavior_features`**: Extracted behavioral metrics
+- **`driver_accident_model`**: Trained logistic regression model
+
+### External Tables (HDFS)
+- **`vehicle_telemetry_data_v2`**: Current flattened telemetry format (recommended)
+- **`vehicle_telemetry_data`**: Legacy nested format
+- **`crash_reports_data`**: Processed crash reports
+
+### Core Tables
+- **`customers`**, **`policies`**, **`vehicles`**, **`drivers`**
+- **`accidents`**, **`claims`**
+
+## Data Formats
+
+### Telemetry v2 (Current)
+- **Path**: `/insurance-megacorp/telemetry-data-v2/`
+- **Format**: Parquet with Snappy compression
+- **Partitioning**: `/date=YYYY-MM-DD/telemetry-*.parquet`
+
+### Telemetry v1 (Legacy)
+- **Path**: `/insurance-megacorp/telemetry-data/`
+- **Partitioning**: `policy_id=XXX/year=YYYY/month=MM/date=YYYY-MM-DD/`
+
+## Version History
+
+- **v2.1.0**: Added --force flag for ML refresh, fixed ROUND() casting issues
+- **v2.0.0**: Flattened telemetry schema, optimized partitioning
+- **v1.1.0**: Safe Driver Scoring system update
+- **v1.0.0**: Initial release

@@ -12,28 +12,28 @@
 
 DROP TABLE IF EXISTS driver_behavior_features_new;
 CREATE TABLE driver_behavior_features_new AS
-SELECT 
+SELECT
     driver_id,
-    
+
     -- Volume metrics
     COUNT(*) as total_events,
-    
+
     -- Speed compliance (primary ML feature - 40% impact)
     ROUND(
-        (COUNT(*) - COUNT(*) FILTER (WHERE speed_mph > speed_limit_mph))::NUMERIC / COUNT(*) * 100, 
+        (COUNT(*) - COUNT(*) FILTER (WHERE speed_mph > speed_limit_mph))::NUMERIC / COUNT(*) * 100,
         2
     ) as speed_compliance_rate,
-    
+
     -- Driving smoothness (secondary ML feature - 25% impact)
     ROUND(AVG(g_force)::NUMERIC, 4) as avg_g_force,
     COUNT(*) FILTER (WHERE g_force > 1.5) as harsh_driving_events,
-    
+
     -- Distraction indicators (15% impact)
     ROUND(
-        COUNT(*) FILTER (WHERE device_screen_on = true AND speed_mph > 5)::NUMERIC / COUNT(*) * 100, 
+        COUNT(*) FILTER (WHERE device_screen_on = true AND speed_mph > 5)::NUMERIC / COUNT(*) * 100,
         2
     ) as phone_usage_rate,
-    
+
     -- Speed consistency (5% impact)
     ROUND(STDDEV(speed_mph)::NUMERIC, 2) as speed_variance,
 
@@ -41,19 +41,20 @@ SELECT
     ROUND(AVG(speed_mph)::NUMERIC, 2) as avg_speed,
     ROUND(MAX(speed_mph)::NUMERIC, 2) as max_speed,
     COUNT(*) FILTER (WHERE speed_mph > speed_limit_mph + 10) as excessive_speeding_count,
-    
+
     -- Timestamp
     NOW() as last_updated
 
-FROM vehicle_telemetry_data_v2 
+FROM vehicle_telemetry_data_v2_working
 WHERE driver_id IS NOT NULL
-GROUP BY driver_id;
+GROUP BY driver_id
+DISTRIBUTED BY (driver_id);
 
 -- Replace the existing features table
 DROP TABLE IF EXISTS driver_behavior_features CASCADE;
 ALTER TABLE driver_behavior_features_new RENAME TO driver_behavior_features;
 
--- Add primary key
+-- Add primary key (table is already distributed by driver_id)
 ALTER TABLE driver_behavior_features ADD PRIMARY KEY (driver_id);
 
 -- Step 2: Update Training Data with Accident History
@@ -63,18 +64,19 @@ ALTER TABLE driver_behavior_features ADD PRIMARY KEY (driver_id);
 
 DROP TABLE IF EXISTS driver_ml_training_data_new;
 CREATE TABLE driver_ml_training_data_new AS
-SELECT 
+SELECT
     dbf.*,
     COALESCE(acc.accident_count, 0) as accident_count,
     CASE WHEN acc.accident_count > 0 THEN 1 ELSE 0 END as has_accident
 FROM driver_behavior_features dbf
 LEFT JOIN (
-    SELECT 
+    SELECT
         driver_id::INTEGER,
         COUNT(*) as accident_count
-    FROM accidents 
+    FROM accidents
     GROUP BY driver_id::INTEGER
-) acc ON dbf.driver_id = acc.driver_id;
+) acc ON dbf.driver_id = acc.driver_id
+DISTRIBUTED BY (driver_id);
 
 -- Replace the existing training data
 DROP TABLE IF EXISTS driver_ml_training_data CASCADE;
@@ -110,44 +112,44 @@ SELECT madlib.logregr_train(
 
 DROP TABLE IF EXISTS safe_driver_scores_new;
 CREATE TABLE safe_driver_scores_new AS
-SELECT 
+SELECT
     driver_id,
-    
+
     -- Get accident probability from MADlib model
     madlib.logregr_predict_prob(
-        (SELECT coef FROM driver_accident_model), 
+        (SELECT coef FROM driver_accident_model),
         ARRAY[1, speed_compliance_rate, avg_g_force, harsh_driving_events, phone_usage_rate, speed_variance]
     ) as accident_probability,
-    
+
     -- Convert to safety score (0-100 scale)
     ROUND(
-        100 * (1 - madlib.logregr_predict_prob(
-            (SELECT coef FROM driver_accident_model), 
+        (100 * (1 - madlib.logregr_predict_prob(
+            (SELECT coef FROM driver_accident_model),
             ARRAY[1, speed_compliance_rate, avg_g_force, harsh_driving_events, phone_usage_rate, speed_variance]
-        )), 2
+        )))::NUMERIC, 2
     ) as safe_driver_score,
-    
+
     -- Determine risk category
-    CASE 
-        WHEN ROUND(100 * (1 - madlib.logregr_predict_prob(
-            (SELECT coef FROM driver_accident_model), 
+    CASE
+        WHEN ROUND((100 * (1 - madlib.logregr_predict_prob(
+            (SELECT coef FROM driver_accident_model),
             ARRAY[1, speed_compliance_rate, avg_g_force, harsh_driving_events, phone_usage_rate, speed_variance]
-        )), 2) >= 90 THEN 'EXCELLENT'
-        WHEN ROUND(100 * (1 - madlib.logregr_predict_prob(
-            (SELECT coef FROM driver_accident_model), 
+        )))::NUMERIC, 2) >= 90 THEN 'EXCELLENT'
+        WHEN ROUND((100 * (1 - madlib.logregr_predict_prob(
+            (SELECT coef FROM driver_accident_model),
             ARRAY[1, speed_compliance_rate, avg_g_force, harsh_driving_events, phone_usage_rate, speed_variance]
-        )), 2) >= 80 THEN 'GOOD'
-        WHEN ROUND(100 * (1 - madlib.logregr_predict_prob(
-            (SELECT coef FROM driver_accident_model), 
+        )))::NUMERIC, 2) >= 80 THEN 'GOOD'
+        WHEN ROUND((100 * (1 - madlib.logregr_predict_prob(
+            (SELECT coef FROM driver_accident_model),
             ARRAY[1, speed_compliance_rate, avg_g_force, harsh_driving_events, phone_usage_rate, speed_variance]
-        )), 2) >= 70 THEN 'AVERAGE'
-        WHEN ROUND(100 * (1 - madlib.logregr_predict_prob(
-            (SELECT coef FROM driver_accident_model), 
+        )))::NUMERIC, 2) >= 70 THEN 'AVERAGE'
+        WHEN ROUND((100 * (1 - madlib.logregr_predict_prob(
+            (SELECT coef FROM driver_accident_model),
             ARRAY[1, speed_compliance_rate, avg_g_force, harsh_driving_events, phone_usage_rate, speed_variance]
-        )), 2) >= 60 THEN 'POOR'
+        )))::NUMERIC, 2) >= 60 THEN 'POOR'
         ELSE 'HIGH_RISK'
     END as risk_category,
-    
+
     -- Include feature details for analysis
     total_events,
     speed_compliance_rate,
@@ -155,10 +157,11 @@ SELECT
     harsh_driving_events,
     phone_usage_rate,
     accident_count,
-    
+
     NOW() as calculation_date
 
-FROM driver_ml_training_data;
+FROM driver_ml_training_data
+DISTRIBUTED BY (driver_id);
 
 -- Step 5: Insert New Scores into Production Table
 -- =============================================================================
@@ -207,10 +210,10 @@ ORDER BY driver_id, calculation_date DESC;
 -- Show summary of score changes
 -- =============================================================================
 
-SELECT 
+SELECT
     'RECALCULATION SUMMARY' as summary_type,
     COUNT(*) as drivers_scored,
-    ROUND(AVG(safe_driver_score), 2) as avg_score,
+    ROUND(AVG(safe_driver_score)::NUMERIC, 2) as avg_score,
     MIN(safe_driver_score) as min_score,
     MAX(safe_driver_score) as max_score,
     COUNT(*) FILTER (WHERE risk_category = 'EXCELLENT') as excellent_drivers,

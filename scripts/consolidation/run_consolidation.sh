@@ -184,7 +184,9 @@ echo ""
 log_header "Running Consolidation"
 
 # Build the command
-PYTHON_CMD="python3 parquet_consolidator.py --date $DATE $DRY_RUN $TARGET_SIZE"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+PYTHON_CMD="python3 $REPO_ROOT/python/parquet_consolidator.py --date $DATE $DRY_RUN $TARGET_SIZE"
 
 log_info "Executing: $PYTHON_CMD"
 echo ""

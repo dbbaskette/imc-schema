@@ -25,9 +25,16 @@ import os
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional, Dict
+
+# Number of parallel downloads
+PARALLEL_DOWNLOADS = 8
+
+# Cleanup threshold - files smaller than this are considered corrupted
+CLEANUP_THRESHOLD_BYTES = 1024  # 1KB
 
 import pandas as pd
 import pyarrow as pa
@@ -111,18 +118,69 @@ class ParquetConsolidator:
             self.hdfs = None
             logger.info("Using subprocess fallback for HDFS operations (hdfs3 not available)")
     
+    def cleanup_corrupted_files(self, date: str, dry_run: bool = False) -> int:
+        """Remove corrupted/tiny files from a date partition before consolidation"""
+        date_path = f"{BASE_PATH}/date={date}"
+        deleted_count = 0
+
+        try:
+            # Get file listing with sizes
+            result = subprocess.run(
+                ["hdfs", "dfs", "-ls", date_path],
+                capture_output=True, text=True
+            )
+            if result.returncode != 0:
+                logger.warning(f"Could not list directory for cleanup: {date_path}")
+                return 0
+
+            # Find and delete tiny files
+            env = os.environ.copy()
+            env['HADOOP_USER_NAME'] = 'hdfs'
+
+            for line in result.stdout.split('\n'):
+                if 'telemetry-' in line and '.parquet' in line:
+                    parts = line.split()
+                    if len(parts) >= 8:
+                        try:
+                            size = int(parts[4])
+                            file_path = parts[-1]
+
+                            if size <= CLEANUP_THRESHOLD_BYTES:
+                                if dry_run:
+                                    logger.info(f"Would delete corrupted file: {os.path.basename(file_path)} ({size} bytes)")
+                                else:
+                                    del_result = subprocess.run(
+                                        ["hdfs", "dfs", "-rm", file_path],
+                                        capture_output=True, text=True, env=env
+                                    )
+                                    if del_result.returncode == 0:
+                                        logger.info(f"Deleted corrupted file: {os.path.basename(file_path)} ({size} bytes)")
+                                        deleted_count += 1
+                                    else:
+                                        logger.warning(f"Failed to delete {file_path}: {del_result.stderr}")
+                        except (ValueError, IndexError):
+                            continue
+
+            if deleted_count > 0:
+                logger.info(f"Cleaned up {deleted_count} corrupted files for date {date}")
+
+            return deleted_count
+
+        except Exception as e:
+            logger.error(f"Error during cleanup for date {date}: {e}")
+            return 0
+
     def get_daily_files(self, date: str) -> List[str]:
         """Get list of Parquet files for a specific date"""
         date_path = f"{BASE_PATH}/date={date}"
-        
+
         try:
             if self.hdfs:
                 # Use hdfs3 library
-                files = [f for f in self.hdfs.ls(date_path) 
+                files = [f for f in self.hdfs.ls(date_path)
                         if f.endswith('.parquet') and 'telemetry-' in f and 'consolidated' not in f]
             else:
                 # Fallback to subprocess
-                import subprocess
                 result = subprocess.run(
                     ["hdfs", "dfs", "-ls", date_path],
                     capture_output=True, text=True
@@ -130,7 +188,7 @@ class ParquetConsolidator:
                 if result.returncode != 0:
                     logger.error(f"Failed to list HDFS directory: {result.stderr}")
                     return []
-                
+
                 files = []
                 for line in result.stdout.split('\n'):
                     if 'telemetry-' in line and '.parquet' in line:
@@ -141,10 +199,10 @@ class ParquetConsolidator:
                         parts = line.split()
                         if len(parts) >= 8:
                             files.append(parts[-1])
-            
+
             logger.info(f"Found {len(files)} Parquet files for date {date}")
             return files
-            
+
         except Exception as e:
             logger.error(f"Error listing files for date {date}: {e}")
             return []
@@ -254,36 +312,56 @@ class ParquetConsolidator:
             'file_count': len(files)
         }
     
+    def _download_single_file(self, hdfs_file: str, local_dir: str) -> Optional[str]:
+        """Download a single file from HDFS (used by parallel downloader)"""
+        try:
+            filename = os.path.basename(hdfs_file)
+            local_file = os.path.join(local_dir, filename)
+
+            if self.hdfs:
+                # Use hdfs3 library
+                self.hdfs.get(hdfs_file, local_file)
+            else:
+                # Subprocess fallback
+                result = subprocess.run([
+                    "hdfs", "dfs", "-get", hdfs_file, local_file
+                ], capture_output=True)
+                if result.returncode != 0:
+                    logger.error(f"Failed to download {hdfs_file}")
+                    return None
+
+            logger.debug(f"Downloaded {hdfs_file} -> {local_file}")
+            return local_file
+
+        except Exception as e:
+            logger.error(f"Error downloading {hdfs_file}: {e}")
+            return None
+
     def download_files(self, files: List[str], local_dir: str) -> List[str]:
-        """Download Parquet files from HDFS to local temp directory"""
+        """Download Parquet files from HDFS to local temp directory (parallel)"""
         local_files = []
-        
+
         os.makedirs(local_dir, exist_ok=True)
-        
-        for hdfs_file in files:
-            try:
-                filename = os.path.basename(hdfs_file)
-                local_file = os.path.join(local_dir, filename)
-                
-                if self.hdfs:
-                    # Use hdfs3 library
-                    self.hdfs.get(hdfs_file, local_file)
-                else:
-                    # Subprocess fallback
-                    import subprocess
-                    result = subprocess.run([
-                        "hdfs", "dfs", "-get", hdfs_file, local_file
-                    ], capture_output=True)
-                    if result.returncode != 0:
-                        logger.error(f"Failed to download {hdfs_file}")
-                        continue
-                
-                local_files.append(local_file)
-                logger.debug(f"Downloaded {hdfs_file} -> {local_file}")
-                
-            except Exception as e:
-                logger.error(f"Error downloading {hdfs_file}: {e}")
-        
+
+        logger.info(f"Downloading {len(files)} files using {PARALLEL_DOWNLOADS} parallel threads...")
+
+        with ThreadPoolExecutor(max_workers=PARALLEL_DOWNLOADS) as executor:
+            # Submit all download tasks
+            future_to_file = {
+                executor.submit(self._download_single_file, hdfs_file, local_dir): hdfs_file
+                for hdfs_file in files
+            }
+
+            # Collect results as they complete
+            for future in as_completed(future_to_file):
+                hdfs_file = future_to_file[future]
+                try:
+                    local_file = future.result()
+                    if local_file:
+                        local_files.append(local_file)
+                except Exception as e:
+                    logger.error(f"Download failed for {hdfs_file}: {e}")
+
         logger.info(f"Downloaded {len(local_files)} files to {local_dir}")
         return local_files
     
@@ -396,12 +474,15 @@ class ParquetConsolidator:
         logger.info(f"Removed {success_count}/{len(files)} source files")
         return success_count == len(files)
     
-    def consolidate_date(self, date: str, target_size_mb: int = TARGET_FILE_SIZE_MB, 
+    def consolidate_date(self, date: str, target_size_mb: int = TARGET_FILE_SIZE_MB,
                         dry_run: bool = False) -> bool:
         """Main consolidation workflow for a specific date"""
-        
+
         logger.info(f"{'DRY RUN: ' if dry_run else ''}Starting consolidation for date {date}")
-        
+
+        # Step 0: Clean up corrupted/tiny files first
+        self.cleanup_corrupted_files(date, dry_run=dry_run)
+
         # Step 1: Get list of files
         files = self.get_daily_files(date)
         if len(files) < MIN_FILES_TO_CONSOLIDATE:

@@ -1,5 +1,6 @@
 # Generated SQL artifacts
 *_generated.sql
+sql/external/*_generated.sql
 
 # Local logs
 logs/
@@ -7,13 +8,24 @@ logs/
 
 # Self-updating release helper artifacts
 .release-exec
-release.sh
+scripts/utilities/release.sh
 
 # OS/editor noise
 .DS_Store
 .idea/
 .vscode/
 
+# Configuration with secrets (use config.env.example as template)
 config.env
+config/config.env
 config.env.backup*.yml
 *.properties
+
+# Python virtual environment
+venv-consolidation/
+__pycache__/
+*.pyc
+
+# Temporary files
+*.tmp
+*.bak

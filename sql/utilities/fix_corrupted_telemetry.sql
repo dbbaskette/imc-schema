@@ -1,10 +1,10 @@
 -- =============================================================================
--- Temporary Fix for Corrupted Parquet File
+-- Working Table for Telemetry Data
 -- =============================================================================
--- This creates a filtered view that skips the corrupted 2025-09-24 partition
+-- Creates a working external table pointing to all telemetry partitions.
+-- Run cleanup_telemetry_files.sh BEFORE this to remove corrupted files.
 -- =============================================================================
 
--- Create a working external table that excludes corrupted partitions
 DROP EXTERNAL TABLE IF EXISTS vehicle_telemetry_data_v2_working CASCADE;
 
 CREATE EXTERNAL TABLE vehicle_telemetry_data_v2_working (
@@ -56,17 +56,7 @@ CREATE EXTERNAL TABLE vehicle_telemetry_data_v2_working (
   device_charging        BOOLEAN
 )
 LOCATION (
-  -- Exclude the corrupted date=2025-09-24 partition
-  'pxf://telemetry-data-v2/date=2024*/telemetry-*.parquet?PROFILE=hdfs:parquet&SERVER=hdfs-server&IGNORE_MISSING_PATH=true',
-  'pxf://telemetry-data-v2/date=2025-01*/telemetry-*.parquet?PROFILE=hdfs:parquet&SERVER=hdfs-server&IGNORE_MISSING_PATH=true',
-  'pxf://telemetry-data-v2/date=2025-02*/telemetry-*.parquet?PROFILE=hdfs:parquet&SERVER=hdfs-server&IGNORE_MISSING_PATH=true',
-  'pxf://telemetry-data-v2/date=2025-03*/telemetry-*.parquet?PROFILE=hdfs:parquet&SERVER=hdfs-server&IGNORE_MISSING_PATH=true',
-  'pxf://telemetry-data-v2/date=2025-04*/telemetry-*.parquet?PROFILE=hdfs:parquet&SERVER=hdfs-server&IGNORE_MISSING_PATH=true',
-  'pxf://telemetry-data-v2/date=2025-05*/telemetry-*.parquet?PROFILE=hdfs:parquet&SERVER=hdfs-server&IGNORE_MISSING_PATH=true',
-  'pxf://telemetry-data-v2/date=2025-06*/telemetry-*.parquet?PROFILE=hdfs:parquet&SERVER=hdfs-server&IGNORE_MISSING_PATH=true',
-  'pxf://telemetry-data-v2/date=2025-07*/telemetry-*.parquet?PROFILE=hdfs:parquet&SERVER=hdfs-server&IGNORE_MISSING_PATH=true',
-  'pxf://telemetry-data-v2/date=2025-08*/telemetry-*.parquet?PROFILE=hdfs:parquet&SERVER=hdfs-server&IGNORE_MISSING_PATH=true'
-  -- Skipping date=2025-09-24 due to corrupted file
+  'pxf://telemetry-data-v2/date=*/telemetry-*.parquet?PROFILE=hdfs:parquet&SERVER=hdfs-server&IGNORE_MISSING_PATH=true'
 )
 FORMAT 'CUSTOM' (FORMATTER='pxfwritable_import');
 
@@ -76,10 +66,10 @@ SELECT
     COUNT(*) as rows
 FROM vehicle_telemetry_data_v2_working;
 
--- Show available date partitions
+-- Show available date partitions (using TO_TIMESTAMP for epoch times stored as scientific notation)
 SELECT
     'Available data sample:' as info,
-    MIN(event_time::timestamp) as earliest_event,
-    MAX(event_time::timestamp) as latest_event,
+    TO_TIMESTAMP(MIN(event_time::double precision)) as earliest_event,
+    TO_TIMESTAMP(MAX(event_time::double precision)) as latest_event,
     COUNT(DISTINCT driver_id) as unique_drivers
 FROM vehicle_telemetry_data_v2_working;

@@ -8,11 +8,13 @@
 
 set -euo pipefail
 
-# Load configuration
-source config.env
+# Load configuration (find repo root)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+source "$REPO_ROOT/config.env"
 
 # Configuration
-SIZE_THRESHOLD_KB=10
+SIZE_THRESHOLD_KB=1  # Only delete files ≤1KB (corrupted/empty files)
 SIZE_THRESHOLD_BYTES=$((SIZE_THRESHOLD_KB * 1024))
 TELEMETRY_BASE_PATH="${1:-hdfs://${HDFS_NAMENODE_HOST}:${HDFS_NAMENODE_PORT}/insurance-megacorp/telemetry-data-v2}"
 REPORT_DIR="${LOG_DIR:-./logs}"
