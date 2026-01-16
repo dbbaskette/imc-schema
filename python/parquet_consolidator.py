@@ -51,8 +51,14 @@ except ImportError:
 def load_config() -> Dict[str, str]:
     """Load configuration from config.env file"""
     config = {}
-    config_file = Path(__file__).parent / "config.env"
-    
+    # Look for config.env in repo root (parent of python/)
+    repo_root = Path(__file__).parent.parent
+    config_file = repo_root / "config.env"
+
+    # Fallback to same directory if not found in repo root
+    if not config_file.exists():
+        config_file = Path(__file__).parent / "config.env"
+
     if not config_file.exists():
         raise FileNotFoundError(f"Configuration file not found: {config_file}")
     

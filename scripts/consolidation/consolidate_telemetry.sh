@@ -17,8 +17,9 @@ set -euo pipefail
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PYTHON_SCRIPT="$SCRIPT_DIR/parquet_consolidator.py"
-VENV_DIR="$SCRIPT_DIR/venv-consolidation"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+PYTHON_SCRIPT="$REPO_ROOT/python/parquet_consolidator.py"
+VENV_DIR="$REPO_ROOT/venv-consolidation"
 DEFAULT_TARGET_SIZE=128
 DEFAULT_DAYS_BACK=1
 

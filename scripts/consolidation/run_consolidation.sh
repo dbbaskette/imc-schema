@@ -110,11 +110,13 @@ echo ""
 
 # Step 1: Check if config.env exists
 log_info "Checking configuration..."
-if [[ ! -f "config.env" ]]; then
-    log_error "config.env not found. Please copy config.env.example to config.env and update with your settings."
+SCRIPT_DIR_CHECK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT_CHECK="$(cd "$SCRIPT_DIR_CHECK/../.." && pwd)"
+if [[ ! -f "$REPO_ROOT_CHECK/config.env" ]]; then
+    log_error "config.env not found in repo root. Please copy config.env.example to config.env and update with your settings."
     exit 1
 fi
-log_success "Configuration found"
+log_success "Configuration found at $REPO_ROOT_CHECK/config.env"
 
 # Step 2: Setup Hadoop environment
 log_info "Setting up Hadoop environment..."
@@ -135,10 +137,11 @@ fi
 
 # Step 3: Check Python virtual environment
 log_info "Setting up Python environment..."
-if [[ ! -d "venv-consolidation" ]]; then
-    log_warning "Python virtual environment not found. Creating..."
-    if [[ -f "setup_consolidation_env.sh" ]]; then
-        ./setup_consolidation_env.sh
+VENV_DIR="$REPO_ROOT_CHECK/venv-consolidation"
+if [[ ! -d "$VENV_DIR" ]]; then
+    log_warning "Python virtual environment not found at $VENV_DIR. Creating..."
+    if [[ -f "$REPO_ROOT_CHECK/scripts/setup/setup_consolidation_env.sh" ]]; then
+        cd "$REPO_ROOT_CHECK" && ./scripts/setup/setup_consolidation_env.sh
         log_success "Python environment created"
     else
         log_error "setup_consolidation_env.sh not found"
@@ -147,7 +150,7 @@ if [[ ! -d "venv-consolidation" ]]; then
 fi
 
 # Activate virtual environment
-source venv-consolidation/bin/activate
+source "$VENV_DIR/bin/activate"
 log_success "Python environment activated"
 
 # Step 4: Test HDFS connectivity
